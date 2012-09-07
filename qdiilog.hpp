@@ -51,9 +51,9 @@ struct QdiilogOstream
 {
     typedef std::ostream Output;
     Loglevel filter_level;
-    
+
     QdiilogOstream()
-        :filter_level(Loglevel_error)
+        :filter_level( Loglevel_error )
     {
     }
 };
@@ -64,10 +64,10 @@ struct Logger
 {
     typedef typename QdiilogParameters::Output Output;
 
-    Logger(Loglevel _level = Loglevel_error)
+    Logger( Loglevel _level = Loglevel_error )
         :m_output( nullptr )
-        ,m_level(_level) 
-    { 
+        ,m_level( _level )
+    {
     }
     virtual ~Logger() { }
 
@@ -85,13 +85,16 @@ private:
     std::ostream  * m_output;
     template<typename P, typename T>
     friend Logger<P> & operator<<( Logger<P> & _logger, T && _t );
-    
+
 private:
     Loglevel    m_level;
     static QdiilogParameters g_config;
-    
+
 public:
-    static void setLogLevel(Loglevel _level) { g_config.filter_level = _level; }
+    static void setLogLevel( Loglevel _level )
+    {
+        g_config.filter_level = _level;
+    }
 };
 
 //------------------------------------------------------------
@@ -122,9 +125,10 @@ Logger<QdiilogParameters> & operator<<( Logger<QdiilogParameters> & _logger, T&&
 {
     if( _logger.m_output )
     {
-        if ( _logger.g_config.filter_level >= _logger.m_level )
-            *( _logger.m_output ) << std::forward<T>(_t);
+        if( _logger.g_config.filter_level >= _logger.m_level )
+            *( _logger.m_output ) << std::forward<T>( _t );
     }
+
     return _logger;
 }
 
@@ -136,34 +140,47 @@ Logger<QdiilogParameters> & Logger<QdiilogParameters>::operator()( bool _conditi
 }
 
 //------------------------------------------------------------
-Logger<QdiilogOstream> log_debug(Loglevel_debug);
-Logger<QdiilogOstream> log_trace(Loglevel_trace);
-Logger<QdiilogOstream> log_info(Loglevel_info);
-Logger<QdiilogOstream> log_warning(Loglevel_warning);
-Logger<QdiilogOstream> log_error(Loglevel_error);
+Logger<QdiilogOstream> log_debug( Loglevel_debug );
+Logger<QdiilogOstream> log_trace( Loglevel_trace );
+Logger<QdiilogOstream> log_info( Loglevel_info );
+Logger<QdiilogOstream> log_warning( Loglevel_warning );
+Logger<QdiilogOstream> log_error( Loglevel_error );
 
 //------------------------------------------------------------
-inline 
-ErrorCode setLogLevel(Loglevel _level)
+inline
+ErrorCode setLogLevel( Loglevel _level )
 {
     ErrorCode ret = OK;
-    
-    switch(_level)
+
+    switch( _level )
     {
-        case Loglevel_debug:
-        case Loglevel_error:
-        case Loglevel_info:
-        case Loglevel_trace:
-        case Loglevel_warning:
-            Logger<QdiilogOstream>::setLogLevel(_level);
+    case Loglevel_debug:
+    case Loglevel_error:
+    case Loglevel_info:
+    case Loglevel_trace:
+    case Loglevel_warning:
+        Logger<QdiilogOstream>::setLogLevel( _level );
         break;
-        default:
-            ret = INVALID_LOGLEVEL;
-            break;
+
+    default:
+        ret = INVALID_LOGLEVEL;
+        break;
     }
-    
+
     return ret;
 }
+
+//------------------------------------------------------------
+inline
+ErrorCode setOutput( QdiilogOstream::Output & _output )
+{
+    log_debug.setOutput( _output );
+    log_trace.setOutput( _output );
+    log_info.setOutput( _output );
+    log_warning.setOutput( _output );
+    log_error.setOutput( _output );
+}
+
 #ifdef QDIILOG_NAMESPACE
 }
 #endif //QDIILOG_NAMESPACE
