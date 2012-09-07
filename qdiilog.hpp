@@ -174,11 +174,17 @@ ErrorCode setLogLevel( Loglevel _level )
 inline
 ErrorCode setOutput( QdiilogOstream::Output & _output )
 {
-    log_debug.setOutput( _output );
-    log_trace.setOutput( _output );
-    log_info.setOutput( _output );
-    log_warning.setOutput( _output );
-    log_error.setOutput( _output );
+    ErrorCode ret = log_debug.setOutput( _output );
+    if (ret == OK)
+        ret = log_trace.setOutput( _output );
+    if (ret == OK)
+        ret = log_info.setOutput( _output );
+    if (ret == OK)
+        ret = log_warning.setOutput( _output );
+    if (ret == OK)
+        ret = log_error.setOutput( _output );
+    
+    return ret;
 }
 
 #ifdef QDIILOG_NAMESPACE
