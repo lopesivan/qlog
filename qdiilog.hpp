@@ -10,16 +10,18 @@ namespace QDIILOG_NAMESPACE
 
 typedef int_fast32_t ix;
 typedef ix ErrorCode;
-typedef ix Loglevel;
+
+enum class Loglevel
+{
+    debug,
+    trace,
+    info,
+    warning,
+    error
+};
 
 static const ErrorCode          OK                  = 0;
 static const ErrorCode          INVALID_LOGLEVEL    = -1;
-
-static const Loglevel       Loglevel_debug      = 5;
-static const Loglevel       Loglevel_trace      = 4;
-static const Loglevel       Loglevel_info       = 3;
-static const Loglevel       Loglevel_warning    = 2;
-static const Loglevel       Loglevel_error      = 1;
 
 #define QDIILOG_DECL_HIDDEN __attribute__ ((visibility("hidden")))
 #define QDIILOG_DECL_VISIBLE __attribute__ ((visibility("default")))
@@ -53,7 +55,7 @@ struct QdiilogOstream
     Loglevel filter_level;
 
     QdiilogOstream()
-        :filter_level( Loglevel_error )
+        :filter_level( Loglevel::error )
     {
     }
 };
@@ -64,7 +66,7 @@ struct Logger
 {
     typedef typename QdiilogParameters::Output Output;
 
-    Logger( Loglevel _level = Loglevel_error )
+    Logger( Loglevel _level = Loglevel::error )
         :m_output( nullptr )
         ,m_level( _level )
     {
@@ -140,34 +142,17 @@ Logger<QdiilogParameters> & Logger<QdiilogParameters>::operator()( bool _conditi
 }
 
 //------------------------------------------------------------
-Logger<QdiilogOstream> log_debug( Loglevel_debug );
-Logger<QdiilogOstream> log_trace( Loglevel_trace );
-Logger<QdiilogOstream> log_info( Loglevel_info );
-Logger<QdiilogOstream> log_warning( Loglevel_warning );
-Logger<QdiilogOstream> log_error( Loglevel_error );
+Logger<QdiilogOstream> log_debug( Loglevel::debug );
+Logger<QdiilogOstream> log_trace( Loglevel::trace );
+Logger<QdiilogOstream> log_info( Loglevel::info );
+Logger<QdiilogOstream> log_warning( Loglevel::warning );
+Logger<QdiilogOstream> log_error( Loglevel::error );
 
 //------------------------------------------------------------
 inline
-ErrorCode setLogLevel( Loglevel _level )
+void setLogLevel( Loglevel _level )
 {
-    ErrorCode ret = OK;
-
-    switch( _level )
-    {
-    case Loglevel_debug:
-    case Loglevel_error:
-    case Loglevel_info:
-    case Loglevel_trace:
-    case Loglevel_warning:
-        Logger<QdiilogOstream>::setLogLevel( _level );
-        break;
-
-    default:
-        ret = INVALID_LOGLEVEL;
-        break;
-    }
-
-    return ret;
+    Logger<QdiilogOstream>::setLogLevel( _level );
 }
 
 //------------------------------------------------------------
