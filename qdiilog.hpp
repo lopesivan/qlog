@@ -127,7 +127,26 @@ Logger<QdiilogParameters> & operator<<( Logger<QdiilogParameters> & _logger, T&&
 {
     if( _logger.m_output )
     {
-        if( _logger.g_config.filter_level >= _logger.m_level )
+        bool canLog = false;
+        switch(_logger.m_level)
+        {
+            case Loglevel::error:
+                canLog |= (_logger.g_config.filter_level == Loglevel::error);
+                
+            case Loglevel::warning:
+                canLog |= (_logger.g_config.filter_level == Loglevel::warning);
+            
+            case Loglevel::info:
+                canLog |= (_logger.g_config.filter_level == Loglevel::info);
+                
+            case Loglevel::trace:
+                canLog |= (_logger.g_config.filter_level == Loglevel::trace);
+                
+            case Loglevel::debug:
+                canLog |= (_logger.g_config.filter_level == Loglevel::debug);
+                break;
+        }
+        if( canLog )
             *( _logger.m_output ) << std::forward<T>( _t );
     }
 
