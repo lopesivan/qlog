@@ -10,9 +10,16 @@ namespace QDIILOG_NAMESPACE
 
 typedef int_fast32_t ix;
 typedef ix ErrorCode;
+typedef ix Loglevel;
 
-static const ErrorCode          OK          = 0;
+static const ErrorCode          OK                  = 0;
+static const ErrorCode          INVALID_LOGLEVEL    = -1;
 
+static const Loglevel       Loglevel_debug      = 5;
+static const Loglevel       Loglevel_trace      = 4;
+static const Loglevel       Loglevel_info       = 3;
+static const Loglevel       Loglevel_warning    = 2;
+static const Loglevel       Loglevel_error      = 1;
 
 #define QDIILOG_DECL_HIDDEN __attribute__ ((visibility("hidden")))
 #define QDIILOG_DECL_VISIBLE __attribute__ ((visibility("default")))
@@ -29,25 +36,26 @@ ErrorCode qdiilog_init() QDIILOG_DECL_VISIBLE;
 template <typename QdiiLogParameters>
 ErrorCode qdiilog_end() QDIILOG_DECL_VISIBLE;
 
-//------------------------------------------------------------
-inline
-ErrorCode qdiilog_init()
-{
-    return OK;
-}
+#define QDIILOG_LOGGING_TYPE_NULL 0
+#define QDIILOG_LOGGING_TYPE_STDCOUT 1
+#define QDIILOG_LOGGING_TYPE_STDCERR 2
+#define QDIILOG_LOGGING_TYPE_FILE 3
 
-//------------------------------------------------------------
-inline
-ErrorCode qdiilog_end()
-{
-    return OK;
-}
+#ifndef QDIILOG_LOGGING_TYPE
+#   define QDIILOG_LOGGING_TYPE QDIILOG_LOGGING_TYPE_STDCOUT
+#endif
 
 
 //------------------------------------------------------------
 struct QdiilogOstream
 {
     typedef std::ostream Output;
+    Loglevel filter_level;
+    
+    QdiilogOstream()
+        :filter_level(Loglevel_error)
+    {
+    }
 };
 
 //------------------------------------------------------------
@@ -56,7 +64,11 @@ struct Logger
 {
     typedef typename QdiilogParameters::Output Output;
 
-    Logger(): m_output( nullptr ) { }
+    Logger(Loglevel _level = Loglevel_error)
+        :m_output( nullptr )
+        ,m_level(_level) 
+    { 
+    }
     virtual ~Logger() { }
 
     ErrorCode setOutput( Output & _output )
@@ -73,9 +85,18 @@ private:
     std::ostream  * m_output;
     template<typename P, typename T>
     friend Logger<P> & operator<<( Logger<P> & _logger, T && _t );
-
+    
+private:
+    Loglevel    m_level;
+    static QdiilogParameters g_config;
+    
+public:
+    static void setLogLevel(Loglevel _level) { g_config.filter_level = _level; }
 };
 
+//------------------------------------------------------------
+template <typename QdiilogParameters>
+QdiilogParameters Logger<QdiilogParameters>::g_config;
 
 //------------------------------------------------------------
 template<typename QdiilogParameters>
@@ -100,8 +121,10 @@ template <typename QdiilogParameters, typename T>
 Logger<QdiilogParameters> & operator<<( Logger<QdiilogParameters> & _logger, T&& _t )
 {
     if( _logger.m_output )
-        *( _logger.m_output ) << std::forward<T>(_t);
-        
+    {
+        if ( _logger.g_config.filter_level >= _logger.m_level )
+            *( _logger.m_output ) << std::forward<T>(_t);
+    }
     return _logger;
 }
 
@@ -112,6 +135,35 @@ Logger<QdiilogParameters> & Logger<QdiilogParameters>::operator()( bool _conditi
     return _condition ? *this : OutputNull<QdiilogParameters>::nullOutput;;
 }
 
+//------------------------------------------------------------
+Logger<QdiilogOstream> log_debug(Loglevel_debug);
+Logger<QdiilogOstream> log_trace(Loglevel_trace);
+Logger<QdiilogOstream> log_info(Loglevel_info);
+Logger<QdiilogOstream> log_warning(Loglevel_warning);
+Logger<QdiilogOstream> log_error(Loglevel_error);
+
+//------------------------------------------------------------
+inline 
+ErrorCode setLogLevel(Loglevel _level)
+{
+    ErrorCode ret = OK;
+    
+    switch(_level)
+    {
+        case Loglevel_debug:
+        case Loglevel_error:
+        case Loglevel_info:
+        case Loglevel_trace:
+        case Loglevel_warning:
+            Logger<QdiilogOstream>::setLogLevel(_level);
+        break;
+        default:
+            ret = INVALID_LOGLEVEL;
+            break;
+    }
+    
+    return ret;
+}
 #ifdef QDIILOG_NAMESPACE
 }
 #endif //QDIILOG_NAMESPACE
