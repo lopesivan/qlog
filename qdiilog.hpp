@@ -43,17 +43,6 @@ ErrorCode qdiilog_end()
     return OK;
 }
 
-//------------------------------------------------------------
-struct OutputNull : public std::ostream
-{
-};
-
-//------------------------------------------------------------
-template <typename T>
-std::ostream & operator<<( OutputNull & _ostr , T )
-{
-    return _ostr;
-}
 
 //------------------------------------------------------------
 struct QdiilogOstream
@@ -63,47 +52,64 @@ struct QdiilogOstream
 
 //------------------------------------------------------------
 template <typename QdiilogParameters>
-struct Logger : public std::ostream
+struct Logger
 {
     typedef typename QdiilogParameters::Output Output;
 
     Logger(): m_output( nullptr ) { }
+    virtual ~Logger() { }
 
     ErrorCode setOutput( Output & _output )
     {
         m_output = &_output;
         return OK;
     }
-    std::ostream & operator()( bool _condition );
+    Logger & operator()( bool _condition );
 
 private:
-    Logger(Logger&) = delete;
-    Logger& operator=(Logger&) = delete;
-    
+    Logger( Logger & _logger ) = delete;
+    Logger & operator=( Logger & _logger ) = delete;
+
     std::ostream  * m_output;
-    template<typename T>
-    friend std::ostream & operator<<( Logger & _logger, T & _t );
+    template<typename P, typename T>
+    friend Logger<P> & operator<<( Logger<P> & _logger, T && _t );
 
 };
 
+
 //------------------------------------------------------------
-static OutputNull nullOutput;
+template<typename QdiilogParameters>
+struct OutputNull : public Logger<QdiilogParameters>
+{
+    static OutputNull nullOutput;
+};
 
 //------------------------------------------------------------
 template <typename QdiilogParameters, typename T>
-std::ostream & operator<<( Logger<QdiilogParameters> & _logger, T & _t )
+Logger<QdiilogParameters> & operator<<( OutputNull<QdiilogParameters> & _ostr , T )
 {
-    std::ostream & output =
-        _logger.m_output ? *( _logger.m_output ) : nullOutput;
-    output << _t;
-    return output;
+    return _ostr;
 }
 
 //------------------------------------------------------------
 template <typename QdiilogParameters>
-std::ostream & Logger<QdiilogParameters>::operator()( bool _condition )
+OutputNull<QdiilogParameters> OutputNull<QdiilogParameters>::nullOutput;
+
+//------------------------------------------------------------
+template <typename QdiilogParameters, typename T>
+Logger<QdiilogParameters> & operator<<( Logger<QdiilogParameters> & _logger, T&& _t )
 {
-    return _condition ? *this : nullOutput;
+    if( _logger.m_output )
+        *( _logger.m_output ) << std::forward<T>(_t);
+
+    return _logger.m_output ? _logger : OutputNull<QdiilogParameters>::nullOutput;
+}
+
+//------------------------------------------------------------
+template <typename QdiilogParameters>
+Logger<QdiilogParameters> & Logger<QdiilogParameters>::operator()( bool _condition )
+{
+    return _condition ? *this : OutputNull<QdiilogParameters>::nullOutput;;
 }
 
 #ifdef QDIILOG_NAMESPACE
