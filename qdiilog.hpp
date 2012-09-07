@@ -101,8 +101,8 @@ Logger<QdiilogParameters> & operator<<( Logger<QdiilogParameters> & _logger, T&&
 {
     if( _logger.m_output )
         *( _logger.m_output ) << std::forward<T>(_t);
-
-    return _logger.m_output ? _logger : OutputNull<QdiilogParameters>::nullOutput;
+        
+    return _logger;
 }
 
 //------------------------------------------------------------
