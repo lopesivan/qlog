@@ -3,7 +3,7 @@
 
 /** @mainpage
  * DESCRIPTION
- * -----------  
+ * -----------
  * qdiilog is a header-only library that provides facilities to log messages
  * for tracing, debugging, etc. The messages can be written on screen or on
  * file.
@@ -16,7 +16,7 @@
  * - log_info
  * - log_warning
  * - log_error
- * 
+ *
  * They work the same way std::cout does, for instance:
  * @code{.cpp}
  * log_warning << "foo() was passed a null pointer" << std::endl;
@@ -37,7 +37,7 @@
  * {
  *   std::ofstream logstream( "myprogram.log" );
  *   setOutput( logstream );
- *   
+ *
  *   int ret = foo();
  *   log_info << "foo() returned: " << ret << std::endl;
  *   return 0
@@ -52,15 +52,15 @@
  *    // redirecting all the messages to myprogram log
  *    std::ofstream logstream( "myprogram.log" );
  *    setOutput( logstream );
- * 
+ *
  *    // redirecting the debug messages to debug.log
  *    std::ofstream debug_stream( "debug.log" );
  *    log_debug.setOutput( debug_stream );
- * 
+ *
  *    log_debug << "calling foo()" << std::endl; // this will go in debug.log
  *    int ret = foo();
  *    log_info << "foo() returned: " << ret << std::endl; // this goes to myprogram.log
- *    
+ *
  *    return 0;
  * }
  * @endcode
@@ -75,17 +75,17 @@
  * - Loglevel::info
  * - Loglevel::warning
  * - Loglevel::error
- * 
+ *
  * If you call <c>setLogLevel( Loglevel::warning )</c>, only the error and warning
  * messages will be processed, the more detailed messages will be ignored.
- * 
+ *
  * PREPENDING YOUR MESSAGES WITH SOME CUSTOM TEXT
  * ----------------------
- * Something I like when I debug is to have every message clearly stating if 
+ * Something I like when I debug is to have every message clearly stating if
  * it is a warning, an error, or whatever. Normally, I'd prepend the warning
- * messages with some custom text, like <b>[ww]</b>, the error messages with 
+ * messages with some custom text, like <b>[ww]</b>, the error messages with
  * some other (say, <b>[EE]</b>), and the information messages with something
- * less visible, such as <b>[..]</b>, so that my log clearly displays what’s 
+ * less visible, such as <b>[..]</b>, so that my log clearly displays what’s
  * important.
  * @verbatim
    [..] Initializing connection...
@@ -103,8 +103,8 @@
  * log_warning.setPrependText("[ww] ");
  * log_error.setPrependText("[EE] ");
  * @endcode
- * 
- * 
+ *
+ *
  * TIPS
  * ----
  * A handy feature is the possibility to disable the logging easily:
@@ -165,7 +165,7 @@ struct QdiilogOstream
 //------------------------------------------------------------
 /**@private
  * @internal
- * @brief A class that is used to prevent prepend messages from being added 
+ * @brief A class that is used to prevent prepend messages from being added
  *        too often */
 template <typename QdiilogParameters>
 struct UndecoratedLogger;
@@ -180,7 +180,7 @@ struct MutedLogger;
 //------------------------------------------------------------
 /**@struct Logger
  * @brief Logs messages
- * 
+ *
  * Normally, users should not have to instantiate this class and should rather
  * use the already existing ones:
  *  - log_debug
@@ -188,7 +188,7 @@ struct MutedLogger;
  *  - log_info
  *  - log_warning
  *  - log_error
- * 
+ *
  * The normal usage of a class is similar to std::cout. For instance, if I
  * wanted to log the return value of a function, I could type.
  * @code{.cpp}
@@ -207,13 +207,15 @@ struct Logger : public std::ostream
     /**@brief Constructs a Logger
      * @param[in] _level The level of logging. */
     explicit Logger( Loglevel _level = Loglevel::error )
-        :m_output( nullptr )
+        :std::ostream()
+        ,m_output( nullptr )
         ,m_level( _level )
         ,m_userPrepend()
         ,m_undecoratedLogger( nullptr )
-        ,m_mutedLogger(nullptr)
-        ,m_muted(false)
+        ,m_mutedLogger( nullptr )
+        ,m_muted( false )
     {
+        setOutput(std::cout);
         m_mutedLogger = new MutedLogger<QdiilogParameters>( _level );
     }
 
@@ -226,13 +228,14 @@ struct Logger : public std::ostream
         ,m_level( _level )
         ,m_userPrepend()
         ,m_undecoratedLogger( nullptr )
-        ,m_mutedLogger(nullptr)
-        ,m_muted(_muted)
+        ,m_mutedLogger( nullptr )
+        ,m_muted( _muted )
     {
+        setOutput(std::cout);
         if( !_notDecorated )
             m_undecoratedLogger = new UndecoratedLogger<QdiilogParameters>( _level );
-            
-        if ( !_muted )
+
+        if( !_muted )
             m_mutedLogger = new MutedLogger<QdiilogParameters>( _level );
     }
 
@@ -244,9 +247,10 @@ struct Logger : public std::ostream
     }
 
     /**@brief Indicates where the messages will be written */
-    ErrorCode setOutput( Output & _output )
+    ErrorCode setOutput( std::ostream & _output )
     {
         m_output = &_output;
+        rdbuf(_output.rdbuf());
 
         if( m_undecoratedLogger )
             m_undecoratedLogger->m_output = &_output;
@@ -405,17 +409,18 @@ Logger<QdiilogParameters> & operator<<( Logger<QdiilogParameters> & _logger, T&&
         if( canLog )
         {
             _logger.prepend();
-            *( _logger.m_output ) << std::forward<T>(_t);
+            static_cast<std::ostream&>(_logger) << std::forward<T>( _t );
         }
     }
-    
+
     Logger<QdiilogParameters> * ret = &_logger;
-    if ( !_logger.m_muted )
+
+    if( !_logger.m_muted )
     {
-        if ( _logger.isDecorated() && _logger.m_undecoratedLogger )
+        if( _logger.isDecorated() && _logger.m_undecoratedLogger )
             ret = _logger.m_undecoratedLogger;
-    }   
-    
+    }
+
     return *ret;
 }
 
@@ -499,6 +504,61 @@ ErrorCode setPrependTextQdiiFlavour()
 
     if( ret == OK )
         ret = log_error.setPrependText( "[EE] " );
+
+    return ret;
+}
+
+//------------------------------------------------------------
+enum BashColor
+{
+    NONE = 0,
+    BLACK, RED, GREEN,
+    YELLOW, BLUE, MAGENTA,
+    CYAN, WHITE
+};
+
+//------------------------------------------------------------
+static
+std::string set_color( BashColor _foreground = NONE, BashColor _background = NONE )
+{
+    std::ostringstream transform;
+    transform << "\033[";
+
+    if( !_foreground && ! _background ) transform << "0"; // reset colors if no params
+
+    if( _foreground != NONE )
+    {
+        transform << 29 + _foreground;
+
+        if( _background ) transform << ";";
+    }
+
+    if( _background != NONE )
+    {
+        transform << 39 + _background;
+    }
+
+    transform << "m";
+    return transform.str();
+}
+
+//------------------------------------------------------------
+inline
+ErrorCode setPrependedTextQdiiFlavourBashColors()
+{
+    ErrorCode ret = log_debug.setPrependText( "" );
+
+    if( ret == OK )
+        ret = log_trace.setPrependText( "" );
+
+    if( ret == OK )
+        ret = log_info.setPrependText( set_color( WHITE ) + "[..] " );
+
+    if( ret == OK )
+        ret = log_warning.setPrependText( set_color( GREEN ) + "[ww] " );
+
+    if( ret == OK )
+        ret = log_error.setPrependText( set_color( RED ) + "[EE] " );
 
     return ret;
 }
