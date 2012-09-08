@@ -171,6 +171,13 @@ template <typename QdiilogParameters>
 struct UndecoratedLogger;
 
 //------------------------------------------------------------
+/**@private
+ * @internal
+ * @brief A class that is used to prevent messages from being written altogether */
+template <typename QdiilogParameters>
+struct MutedLogger;
+
+//------------------------------------------------------------
 /**@struct Logger
  * @brief Logs messages
  * 
@@ -189,7 +196,7 @@ struct UndecoratedLogger;
  * @endcode
  */
 template <typename QdiilogParameters>
-struct Logger
+struct Logger : public std::ostream
 {
     /**@brief Output is std::ostream, really
      * @todo Simplify this
@@ -204,26 +211,35 @@ struct Logger
         ,m_level( _level )
         ,m_userPrepend()
         ,m_undecoratedLogger( nullptr )
+        ,m_mutedLogger(nullptr)
+        ,m_muted(false)
     {
+        m_mutedLogger = new MutedLogger<QdiilogParameters>( _level );
     }
 
     /**@brief Constructs a Logger
      * @private
      * @param[in] _level The level of logging.
      * @param[in] _notDecorated Internal use, don’t touch. */
-    Logger( Loglevel _level, bool _notDecorated )
+    Logger( Loglevel _level, bool _notDecorated, bool _muted )
         :m_output( nullptr )
         ,m_level( _level )
         ,m_userPrepend()
         ,m_undecoratedLogger( nullptr )
+        ,m_mutedLogger(nullptr)
+        ,m_muted(_muted)
     {
         if( !_notDecorated )
             m_undecoratedLogger = new UndecoratedLogger<QdiilogParameters>( _level );
+            
+        if ( !_muted )
+            m_mutedLogger = new MutedLogger<QdiilogParameters>( _level );
     }
 
     /**@brief Destructs a Logger */
     virtual ~Logger()
     {
+        delete m_mutedLogger;
         delete m_undecoratedLogger;
     }
 
@@ -319,6 +335,8 @@ private:
     std::string m_userPrepend;
 
     UndecoratedLogger<QdiilogParameters> * m_undecoratedLogger;
+    MutedLogger<QdiilogParameters> * m_mutedLogger;
+    bool m_muted; ///< a muted logger does not output anything
 };
 
 //------------------------------------------------------------
@@ -329,7 +347,7 @@ template <typename QdiilogParameters>
 struct UndecoratedLogger : public Logger<QdiilogParameters>
 {
     UndecoratedLogger( Loglevel _level = Loglevel::error )
-        :Logger<QdiilogParameters>( _level, true )
+        :Logger<QdiilogParameters>( _level, true, false )
     {
 
     }
@@ -341,35 +359,27 @@ struct UndecoratedLogger : public Logger<QdiilogParameters>
 };
 
 //------------------------------------------------------------
-template <typename QdiilogParameters>
-QdiilogParameters Logger<QdiilogParameters>::g_config;
-
-//------------------------------------------------------------
 /**@private
  * @internal
- * @brief A particular logger that outputs nothing */
-template<typename QdiilogParameters>
-struct OutputNull : public Logger<QdiilogParameters>
+ * @brief A class that is used to prevent messages from being output altogether */
+template <typename QdiilogParameters>
+struct MutedLogger : public Logger<QdiilogParameters>
 {
-    static OutputNull nullOutput;
+    MutedLogger( Loglevel _level = Loglevel::error )
+        :Logger<QdiilogParameters>( _level, true, true )
+    {
+    }
 };
 
 //------------------------------------------------------------
-template <typename QdiilogParameters, typename T>
-Logger<QdiilogParameters> & operator<<( OutputNull<QdiilogParameters> & _ostr , T )
-{
-    return _ostr;
-}
-
-//------------------------------------------------------------
 template <typename QdiilogParameters>
-OutputNull<QdiilogParameters> OutputNull<QdiilogParameters>::nullOutput;
+QdiilogParameters Logger<QdiilogParameters>::g_config;
 
 //------------------------------------------------------------
 template <typename QdiilogParameters, typename T>
 Logger<QdiilogParameters> & operator<<( Logger<QdiilogParameters> & _logger, T&& _t )
 {
-    if( _logger.m_output )
+    if( _logger.m_output && !_logger.m_muted )
     {
         bool canLog = false;
 
@@ -395,19 +405,25 @@ Logger<QdiilogParameters> & operator<<( Logger<QdiilogParameters> & _logger, T&&
         if( canLog )
         {
             _logger.prepend();
-            *( _logger.m_output ) << std::forward<T>( _t );
+            *( _logger.m_output ) << std::forward<T>(_t);
         }
     }
-
-    return ( _logger.isDecorated() && _logger.m_undecoratedLogger ) ?
-           *( _logger.m_undecoratedLogger ) : _logger;
+    
+    Logger<QdiilogParameters> * ret = &_logger;
+    if ( !_logger.m_muted )
+    {
+        if ( _logger.isDecorated() && _logger.m_undecoratedLogger )
+            ret = _logger.m_undecoratedLogger;
+    }   
+    
+    return *ret;
 }
 
 //------------------------------------------------------------
 template <typename QdiilogParameters>
 Logger<QdiilogParameters> & Logger<QdiilogParameters>::operator()( bool _condition )
 {
-    return _condition ? *this : OutputNull<QdiilogParameters>::nullOutput;
+    return _condition && m_mutedLogger ? *this : *m_mutedLogger;
 }
 
 //------------------------------------------------------------
