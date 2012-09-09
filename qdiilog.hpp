@@ -231,12 +231,14 @@ struct Logger : public std::ostream
         ,m_mutedLogger( nullptr )
         ,m_muted( _muted )
     {
-        setOutput(std::cout);
         if( !_notDecorated )
             m_undecoratedLogger = new UndecoratedLogger<QdiilogParameters>( _level );
 
         if( !_muted )
+        {
+            setOutput(std::cout);
             m_mutedLogger = new MutedLogger<QdiilogParameters>( _level );
+        }
     }
 
     /**@brief Destructs a Logger */
@@ -428,7 +430,7 @@ Logger<QdiilogParameters> & operator<<( Logger<QdiilogParameters> & _logger, T&&
 template <typename QdiilogParameters>
 Logger<QdiilogParameters> & Logger<QdiilogParameters>::operator()( bool _condition )
 {
-    return _condition && m_mutedLogger ? *this : *m_mutedLogger;
+    return !_condition && m_mutedLogger ? *m_mutedLogger : *this;
 }
 
 //------------------------------------------------------------
@@ -552,13 +554,13 @@ ErrorCode setPrependedTextQdiiFlavourBashColors()
         ret = log_trace.setPrependText( "" );
 
     if( ret == OK )
-        ret = log_info.setPrependText( set_color( WHITE ) + "[..] " );
+        ret = log_info.setPrependText( "[..] " );
 
     if( ret == OK )
-        ret = log_warning.setPrependText( set_color( GREEN ) + "[ww] " );
+        ret = log_warning.setPrependText( std::string("[") + set_color( GREEN ) + "ww" + set_color(NONE) + "] " );
 
     if( ret == OK )
-        ret = log_error.setPrependText( set_color( RED ) + "[EE] " );
+        ret = log_error.setPrependText( std::string("[") + set_color( RED ) + "EE" + set_color(NONE) + "] " );
 
     return ret;
 }
