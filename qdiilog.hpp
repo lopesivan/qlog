@@ -105,6 +105,31 @@
  * @endcode
  *
  *
+ * NAMING AND NAMESPACES
+ * ---------------------
+ * I normally like to ditch my objects on the global namespace but some people
+ * just don't. I have created a couple preprocessor directives if you want 
+ * to personalize the name of the objects and retrict them into a namespace. By
+ * default, 5 objects are created (log_debug, log_trace, log_info, log_warning
+ * and log_error), and they are thrown into the global namespace. Now if you
+ * want them to be called debug, trace, info, warning and error and to belong
+ * to the namespace log, what you can do is:
+ * @code{.cpp}
+ * #define QDII_NAMESPACE log
+ * #define QDIILOG_NAME_LOGGER_DEBUG debug
+ * #define QDIILOG_NAME_LOGGER_TRACE trace
+ * #define QDIILOG_NAME_LOGGER_INFO info
+ * #define QDIILOG_NAME_LOGGER_WARNING warning
+ * #define QDIILOG_NAME_LOGGER_ERROR error
+ * #include "qdiilog.hpp"
+ * 
+ * int main()
+ * {
+ *   log::info << "here we go!" << std::endl;
+ *   return 0;
+ * }
+ * @endcode
+ * 
  * TIPS
  * ----
  * A handy feature is the possibility to disable the logging easily:
@@ -264,7 +289,8 @@ struct Logger : public std::ostream
         delete m_undecoratedLogger;
     }
 
-    /**@brief Indicates where the messages will be written */
+    /**@brief Indicates where the messages will be written
+      *@param _output an std::ostream into which the messages will be written */
     ErrorCode setOutput( std::ostream & _output )
     {
         m_output = &_output;
@@ -457,6 +483,32 @@ Logger<QdiilogOstream> QDIILOG_NAME_LOGGER_WARNING ( Loglevel::warning );
 Logger<QdiilogOstream> QDIILOG_NAME_LOGGER_ERROR   ( Loglevel::error );
 
 //------------------------------------------------------------
+/**@brief Sets the level of detail
+ * @param[in] _level is the granularity of the logging.
+ * It can take 5 values:
+ * - Loglevel::debug
+ * - Loglevel::trace
+ * - Loglevel::info
+ * - Loglevel::warning
+ * - Loglevel::error
+ *
+ * By changing the level of detail of the logging, the user prevents too 
+ * detailed messages from being output. For instance, if the level of 
+ * detail is Loglevel::warning, nothing but warning and error messages will
+ * be output.
+ * 
+ * @code{.cpp}
+ * int main()
+ * {
+ *   setLogLevel( Loglevel::warning );
+ *   log_debug << "this will not be written" << std::endl;
+ *   log_warning << "but this will" << std::endl;
+ *   log_error << "and that also" << std::endl;
+ * 
+ *   return 0;
+ * }
+ * @endcode
+ */
 inline
 void setLogLevel( Loglevel _level )
 {
@@ -464,6 +516,16 @@ void setLogLevel( Loglevel _level )
 }
 
 //------------------------------------------------------------
+
+/**@brief Redirects the output of all the loggers
+ * @param[in] _output The std::ostream where the loggers should 
+ *                    write their messages
+ * @return OK if everything goes well.
+ * 
+ * This causes all the loggers to output their messages on another ostream
+ * than the previous one. This is exactly the same thing as calling the member
+ * function setOutput on the 5 loggers.
+ */
 inline
 ErrorCode setOutput( QdiilogOstream::Output & _output )
 {
