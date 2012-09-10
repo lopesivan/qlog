@@ -75,9 +75,13 @@
  * - Loglevel::info
  * - Loglevel::warning
  * - Loglevel::error
+ * - Loglevel::disable
  *
  * If you call <c>setLogLevel( Loglevel::warning )</c>, only the error and warning
  * messages will be processed, the more detailed messages will be ignored.
+ * 
+ * The special log level <c>Loglevel::disable</c> will disable all output. No
+ * messages will be written after this has been set.
  *
  * PREPENDING YOUR MESSAGES WITH SOME CUSTOM TEXT
  * ----------------------
@@ -162,7 +166,9 @@ enum class Loglevel
     trace,
     info,
     warning,
-    error
+    error,
+    
+    disable
 };
 
 static const ErrorCode          OK                  = 0;
@@ -448,6 +454,10 @@ Logger<QdiilogParameters> & operator<<( Logger<QdiilogParameters> & _logger, T&&
         case Loglevel::debug:
             canLog |= ( _logger.g_config.filter_level == Loglevel::debug );
             break;
+            
+        case Loglevel::disable:
+            canLog = false;
+            break;
         }
 
         if( canLog )
@@ -527,7 +537,7 @@ void setLogLevel( Loglevel _level )
  * function setOutput on the 5 loggers.
  */
 inline
-ErrorCode setOutput( QdiilogOstream::Output & _output )
+ErrorCode setOutput( std::ostream & _output )
 {
     ErrorCode ret = QDIILOG_NAME_LOGGER_DEBUG .setOutput( _output );
 
@@ -548,7 +558,7 @@ ErrorCode setOutput( QdiilogOstream::Output & _output )
 
 //------------------------------------------------------------
 inline
-ErrorCode setPrependText( const std::string _prependText )
+ErrorCode setPrependText( const std::string &    _prependText )
 {
     ErrorCode ret = QDIILOG_NAME_LOGGER_DEBUG .setPrependText( _prependText );
 
