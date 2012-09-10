@@ -146,6 +146,22 @@ static const ErrorCode          INVALID_LOGLEVEL    = -1;
 #define QDIILOG_DECL_HIDDEN __attribute__ ((visibility("hidden")))
 #define QDIILOG_DECL_VISIBLE __attribute__ ((visibility("default")))
 
+#ifndef QDIILOG_NAME_LOGGER_DEBUG 
+#   define QDIILOG_NAME_LOGGER_DEBUG log_debug
+#endif
+#ifndef QDIILOG_NAME_LOGGER_TRACE
+#   define QDIILOG_NAME_LOGGER_TRACE log_trace
+#endif
+#ifndef QDIILOG_NAME_LOGGER_INFO
+#   define QDIILOG_NAME_LOGGER_INFO log_info
+#endif
+#ifndef QDIILOG_NAME_LOGGER_WARNING
+#   define QDIILOG_NAME_LOGGER_WARNING log_warning
+#endif
+#ifndef QDIILOG_NAME_LOGGER_ERROR
+#   define QDIILOG_NAME_LOGGER_ERROR log_error
+#endif
+
 //------------------------------------------------------------
 struct QDIILOG_DECL_HIDDEN QdiilogOstream;
 /**@private
@@ -434,11 +450,11 @@ Logger<QdiilogParameters> & Logger<QdiilogParameters>::operator()( bool _conditi
 }
 
 //------------------------------------------------------------
-Logger<QdiilogOstream> log_debug( Loglevel::debug );
-Logger<QdiilogOstream> log_trace( Loglevel::trace );
-Logger<QdiilogOstream> log_info( Loglevel::info );
-Logger<QdiilogOstream> log_warning( Loglevel::warning );
-Logger<QdiilogOstream> log_error( Loglevel::error );
+Logger<QdiilogOstream> QDIILOG_NAME_LOGGER_DEBUG   ( Loglevel::debug );
+Logger<QdiilogOstream> QDIILOG_NAME_LOGGER_TRACE   ( Loglevel::trace );
+Logger<QdiilogOstream> QDIILOG_NAME_LOGGER_INFO    ( Loglevel::info );
+Logger<QdiilogOstream> QDIILOG_NAME_LOGGER_WARNING ( Loglevel::warning );
+Logger<QdiilogOstream> QDIILOG_NAME_LOGGER_ERROR   ( Loglevel::error );
 
 //------------------------------------------------------------
 inline
@@ -451,19 +467,19 @@ void setLogLevel( Loglevel _level )
 inline
 ErrorCode setOutput( QdiilogOstream::Output & _output )
 {
-    ErrorCode ret = log_debug.setOutput( _output );
+    ErrorCode ret = QDIILOG_NAME_LOGGER_DEBUG .setOutput( _output );
 
     if( ret == OK )
-        ret = log_trace.setOutput( _output );
+        ret = QDIILOG_NAME_LOGGER_TRACE .setOutput( _output );
 
     if( ret == OK )
-        ret = log_info.setOutput( _output );
+        ret = QDIILOG_NAME_LOGGER_INFO .setOutput( _output );
 
     if( ret == OK )
-        ret = log_warning.setOutput( _output );
+        ret = QDIILOG_NAME_LOGGER_WARNING .setOutput( _output );
 
     if( ret == OK )
-        ret = log_error.setOutput( _output );
+        ret = QDIILOG_NAME_LOGGER_ERROR .setOutput( _output );
 
     return ret;
 }
@@ -472,19 +488,19 @@ ErrorCode setOutput( QdiilogOstream::Output & _output )
 inline
 ErrorCode setPrependText( const std::string _prependText )
 {
-    ErrorCode ret = log_debug.setPrependText( _prependText );
+    ErrorCode ret = QDIILOG_NAME_LOGGER_DEBUG .setPrependText( _prependText );
 
     if( ret == OK )
-        ret = log_trace.setPrependText( _prependText );
+        ret = QDIILOG_NAME_LOGGER_TRACE .setPrependText( _prependText );
 
     if( ret == OK )
-        ret = log_info.setPrependText( _prependText );
+        ret = QDIILOG_NAME_LOGGER_INFO .setPrependText( _prependText );
 
     if( ret == OK )
-        ret = log_warning.setPrependText( _prependText );
+        ret = QDIILOG_NAME_LOGGER_WARNING .setPrependText( _prependText );
 
     if( ret == OK )
-        ret = log_error.setPrependText( _prependText );
+        ret = QDIILOG_NAME_LOGGER_ERROR .setPrependText( _prependText );
 
     return ret;
 }
@@ -493,19 +509,19 @@ ErrorCode setPrependText( const std::string _prependText )
 inline
 ErrorCode setPrependTextQdiiFlavour()
 {
-    ErrorCode ret = log_debug.setPrependText( "" );
+    ErrorCode ret = QDIILOG_NAME_LOGGER_DEBUG .setPrependText( "" );
 
     if( ret == OK )
-        ret = log_trace.setPrependText( "" );
+        ret = QDIILOG_NAME_LOGGER_TRACE .setPrependText( "" );
 
     if( ret == OK )
-        ret = log_info.setPrependText( "[..] " );
+        ret = QDIILOG_NAME_LOGGER_INFO .setPrependText( "[..] " );
 
     if( ret == OK )
-        ret = log_warning.setPrependText( "[ww] " );
+        ret = QDIILOG_NAME_LOGGER_WARNING .setPrependText( "[ww] " );
 
     if( ret == OK )
-        ret = log_error.setPrependText( "[EE] " );
+        ret = QDIILOG_NAME_LOGGER_ERROR .setPrependText( "[EE] " );
 
     return ret;
 }
@@ -548,19 +564,19 @@ std::string set_color( BashColor _foreground = NONE, BashColor _background = NON
 inline
 ErrorCode setPrependedTextQdiiFlavourBashColors()
 {
-    ErrorCode ret = log_debug.setPrependText( "" );
+    ErrorCode ret = QDIILOG_NAME_LOGGER_DEBUG .setPrependText( "" );
 
     if( ret == OK )
-        ret = log_trace.setPrependText( "" );
+        ret = QDIILOG_NAME_LOGGER_TRACE .setPrependText( "" );
 
     if( ret == OK )
-        ret = log_info.setPrependText( "[..] " );
+        ret = QDIILOG_NAME_LOGGER_INFO .setPrependText( "[..] " );
 
     if( ret == OK )
-        ret = log_warning.setPrependText( std::string("[") + set_color( GREEN ) + "ww" + set_color(NONE) + "] " );
+        ret = QDIILOG_NAME_LOGGER_WARNING .setPrependText( std::string("[") + set_color( GREEN ) + "ww" + set_color(NONE) + "] " );
 
     if( ret == OK )
-        ret = log_error.setPrependText( std::string("[") + set_color( RED ) + "EE" + set_color(NONE) + "] " );
+        ret = QDIILOG_NAME_LOGGER_ERROR .setPrependText( std::string("[") + set_color( RED ) + "EE" + set_color(NONE) + "] " );
 
     return ret;
 }
