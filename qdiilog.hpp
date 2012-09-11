@@ -151,6 +151,7 @@
  */
 #include <iostream>
 #include <memory> // auto_ptr
+#include <sstream>
 
 #ifdef QDIILOG_NAMESPACE
 namespace QDIILOG_NAMESPACE
