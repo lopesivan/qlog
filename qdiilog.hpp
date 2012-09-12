@@ -119,7 +119,7 @@
  * want them to be called debug, trace, info, warning and error and to belong
  * to the namespace log, what you can do is:
  * @code{.cpp}
- * #define QDII_NAMESPACE log
+ * #define QDIILOG_NAMESPACE log
  * #define QDIILOG_NAME_LOGGER_DEBUG debug
  * #define QDIILOG_NAME_LOGGER_TRACE trace
  * #define QDIILOG_NAME_LOGGER_INFO info
@@ -267,8 +267,8 @@ struct LoggerImplementation : public LoggerInterface
     /**@brief Constructs a Logger
      * @param[in] _level The level of logging. */
     explicit LoggerImplementation( Loglevel _level = Loglevel::error )
-        :m_output( nullptr )
-        ,m_level( _level )
+        :m_level( _level )
+        ,m_output( nullptr )
         ,m_userPrepend()
         ,m_undecoratedLogger( nullptr )
     {
@@ -279,8 +279,8 @@ struct LoggerImplementation : public LoggerInterface
      * @param[in] _level The level of logging.
      * @param[in] _notDecorated Internal use, don’t touch. */
     LoggerImplementation( Loglevel _level, bool _notDecorated)
-        :m_output( nullptr )
-        ,m_level( _level )
+        :m_level( _level )
+        ,m_output( nullptr )
         ,m_userPrepend()
         ,m_undecoratedLogger( nullptr )
     {
@@ -433,7 +433,7 @@ struct UndecoratedLogger : public LoggerImplementation<T>
     {
 
     }
-    virtual void prepend(std::ostringstream & ret) override final {};
+    virtual void prepend(std::ostringstream &) override final {};
     bool isDecorated() const
     {
         return false;
