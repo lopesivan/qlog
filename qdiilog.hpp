@@ -271,6 +271,7 @@ struct LoggerImplementation : public LoggerInterface
         ,m_output( nullptr )
         ,m_userPrepend()
         ,m_undecoratedLogger( nullptr )
+        ,m_wrappers()
     {
     }
 
@@ -283,6 +284,7 @@ struct LoggerImplementation : public LoggerInterface
         ,m_output( nullptr )
         ,m_userPrepend()
         ,m_undecoratedLogger( nullptr )
+        ,m_wrappers()
     {
         if( !_notDecorated )
             m_undecoratedLogger = new UndecoratedLogger<T>( _level );
@@ -333,31 +335,31 @@ struct LoggerImplementation : public LoggerInterface
      * @return true if logging will happen, else otherwise */
     bool canLog() const
     {
-        bool canLog = false;
+        bool doesLevelAllowLogging = false;
 
             switch( m_level )
             {
             case Loglevel::error:
-                canLog |= ( g_config.filter_level == Loglevel::error );
+                doesLevelAllowLogging |= ( g_config.filter_level == Loglevel::error );
 
             case Loglevel::warning:
-                canLog |= ( g_config.filter_level == Loglevel::warning );
+                doesLevelAllowLogging |= ( g_config.filter_level == Loglevel::warning );
 
             case Loglevel::info:
-                canLog |= ( g_config.filter_level == Loglevel::info );
+                doesLevelAllowLogging |= ( g_config.filter_level == Loglevel::info );
 
             case Loglevel::trace:
-                canLog |= ( g_config.filter_level == Loglevel::trace );
+                doesLevelAllowLogging |= ( g_config.filter_level == Loglevel::trace );
 
             case Loglevel::debug:
-                canLog |= ( g_config.filter_level == Loglevel::debug );
+                doesLevelAllowLogging |= ( g_config.filter_level == Loglevel::debug );
                 break;
 
             case Loglevel::disable:
-                canLog = false;
+                doesLevelAllowLogging = false;
                 break;
             }
-        return canLog;
+        return doesLevelAllowLogging;
     }
 
 private:
