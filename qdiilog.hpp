@@ -1,5 +1,5 @@
-#ifndef QDIILOG_H
-#define QDIILOG_H
+#ifndef QDIILOG_2_0
+#define QDIILOG_2_0
 
 /** @mainpage
  * DESCRIPTION
@@ -149,36 +149,28 @@
  * log_warning( foo() != SUCCESS ) << "problem" << std::endl;
  * @endcode
  */
+ 
+// ___________________________  INCLUDES  ____________________________________
+
 #include <iostream>
 #include <sstream>
-#include <utility> // std forward
+#include <string>
 #include <vector>
-#include <algorithm> 
+#include <algorithm>
+#include <assert.h>
 
+// ___________________________ PREPROCESSOR __________________________________
+
+// let the user defines his own namespace
 #ifdef QDIILOG_NAMESPACE
-namespace QDIILOG_NAMESPACE
-{
+#   define QDIILOG_NS_START namespace QDIILOG_NAMESPACE {
+#   define QDIILOG_NS_END   }
+#else
+#   define QDIILOG_NS_START
+#   define QDIILOG_NS_END
 #endif
 
-typedef int_fast32_t ix;
-typedef ix ErrorCode;
-
-enum class Loglevel
-{
-    debug,
-    trace,
-    info,
-    warning,
-    error,
-
-    disable
-};
-
-static const ErrorCode          OK                  = 0;
-
-#define QDIILOG_DECL_HIDDEN __attribute__ ((visibility("hidden")))
-#define QDIILOG_DECL_VISIBLE __attribute__ ((visibility("default")))
-
+// let the user defines his object names
 #ifndef QDIILOG_NAME_LOGGER_DEBUG
 #   define QDIILOG_NAME_LOGGER_DEBUG log_debug
 #endif
@@ -195,262 +187,57 @@ static const ErrorCode          OK                  = 0;
 #   define QDIILOG_NAME_LOGGER_ERROR log_error
 #endif
 
-//------------------------------------------------------------
-struct QDIILOG_DECL_HIDDEN Traits;
-/**@private
- * @internal
- * @brief A class that is used as template parameter for the loggers */
-struct Traits
+QDIILOG_NS_START
+
+// -------------------------------------------------------------------------- //
+
+/**@brief The different granularity of logging */
+enum class Loglevel
 {
-    Loglevel filter_level;
+    debug,
+    trace,
+    info,
+    warning,
+    error,
 
-    Traits()
-        :filter_level( Loglevel::error )
-    {
-    }
+    disable
 };
+// -------------------------------------------------------------------------- //
 
-//------------------------------------------------------------
-/**@private
+/**@struct UserFilter
+ * @private
  * @internal
- * @brief A class that is used to prevent prepend messages from being added
- *        too often */
-template <typename Traits>
-struct UndecoratedLogger;
-
-//------------------------------------------------------------
-/**@private
- * @internal
- * @brief A class that is used to prevent messages from being written altogether */
-template <typename Traits>
-struct MutedLogger;
-
-//------------------------------------------------------------
-/**@private
- * @internal
- * @struct LoggerInterface
- * @brief Groups all the commands available to the user
  */
-struct LoggerInterface
+template<typename T>
+struct UserFilter
 {
-    LoggerInterface() {}
-    virtual ~LoggerInterface() {}
-
-    virtual ErrorCode setPrependText( const std::string & _prependText ) = 0;
-    virtual void updateOutput( std::ostream & _newOutput ) = 0;
-
+    /**@private */
+    static Loglevel level;
 };
 
-//------------------------------------------------------------
-/**@private
+// -------------------------------------------------------------------------- //
+
+/*
+ * @private
  * @internal
- * @struct LoggerImplementation
- * @brief Logs messages
- *
- * Normally, users should not have to instantiate this class and should rather
- * use the already existing ones:
- *  - log_debug
- *  - log_trace
- *  - log_info
- *  - log_warning
- *  - log_error
- *
- * The normal usage of a class is similar to std::cout. For instance, if I
- * wanted to log the return value of a function, I could type.
- * @code{.cpp}
- * log_debug << "the return value of foo() is: " << ret << std::endl;
- * @endcode
  */
-template <typename T>
-struct LoggerImplementation : public LoggerInterface
+template<typename T>
+Loglevel UserFilter<T>::level;
+
+// -------------------------------------------------------------------------- //
+
+inline
+void setLogLevel( Loglevel _level )
 {
-    /**@brief Constructs a Logger
-     * @param[in] _level The level of logging. */
-    explicit LoggerImplementation( Loglevel _level = Loglevel::error )
-        :m_level( _level )
-        ,m_output( nullptr )
-        ,m_userPrepend()
-        ,m_undecoratedLogger( nullptr )
-        ,m_wrappers()
-    {
-    }
+    UserFilter<int>::level = _level;
+}
 
-    /**@brief Constructs a Logger
-     * @private
-     * @param[in] _level The level of logging.
-     * @param[in] _notDecorated Internal use, don’t touch. */
-    LoggerImplementation( Loglevel _level, bool _notDecorated)
-        :m_level( _level )
-        ,m_output( nullptr )
-        ,m_userPrepend()
-        ,m_undecoratedLogger( nullptr )
-        ,m_wrappers()
-    {
-        if( !_notDecorated )
-            m_undecoratedLogger = new UndecoratedLogger<T>( _level );
-    }
+// -------------------------------------------------------------------------- //
 
-    /**@brief Destructs a Logger */
-    virtual ~LoggerImplementation()
-    {
-        delete m_undecoratedLogger;
-    }
-
-    /**
-     * This function lets you add a custom text before any message logged.
-     * For instance, if you want all warning messages to be preceded by
-     * <c>WARNING: </c>, you could call
-     * @code{.cpp}log_warning.setPrependText("WARNING: "); @endcode
-     * This way, whenever you’ll type a warning message, it will be preceded
-     * by your text. For instance,
-     * @code{.cpp}log_warning << "something odd happened\n"; @endcode
-     * will write <c>WARNING: something odd happened</c>
-     * @brief Adds a custom text before the message to log.
-     * @param[in] _prependText The text to add before the log message.
-     * @warning Calling setPrependText many times cancels the text previously
-     *          set */
-    ErrorCode setPrependText( const std::string & _prependText ) override
-    {
-        m_userPrepend.assign( _prependText );
-        return OK;
-    }
-
-    /**@private
-     * @brief Prepends _u with user data if needed, and return the string */
-    template<typename U>
-    std::string processLog( U&& _u )
-    {
-        std::ostringstream ret;
-
-        if( m_output && canLog() )
-        {
-            prepend( ret );
-            ret << std::forward<U>( _u );
-        }
-
-        return ret.str();
-    }
-    
-    /**@brief Check if the level of detail of the logger is sufficient to log
-     * @return true if logging will happen, else otherwise */
-    bool canLog() const
-    {
-        bool doesLevelAllowLogging = false;
-
-            switch( m_level )
-            {
-            case Loglevel::error:
-                doesLevelAllowLogging |= ( g_config.filter_level == Loglevel::error );
-
-            case Loglevel::warning:
-                doesLevelAllowLogging |= ( g_config.filter_level == Loglevel::warning );
-
-            case Loglevel::info:
-                doesLevelAllowLogging |= ( g_config.filter_level == Loglevel::info );
-
-            case Loglevel::trace:
-                doesLevelAllowLogging |= ( g_config.filter_level == Loglevel::trace );
-
-            case Loglevel::debug:
-                doesLevelAllowLogging |= ( g_config.filter_level == Loglevel::debug );
-                break;
-
-            case Loglevel::disable:
-                doesLevelAllowLogging = false;
-                break;
-            }
-        return doesLevelAllowLogging;
-    }
-
-private:
-    LoggerImplementation( LoggerImplementation & _logger ) = delete;
-    LoggerImplementation & operator=( LoggerImplementation & _logger ) = delete;
-
-private:
-    Loglevel    m_level;
-    static T    g_config;
-    
-    std::ostream * m_output;
-
-public:
-    /**@private
-     * @internal
-     * @brief Sets the log level under which the loggers don’t display anything
-     */
-    static void setLogLevel( Loglevel _level )
-    {
-        g_config.filter_level = _level;
-    }
-
-private:
-    virtual bool isDecorated() const
-    {
-        return m_userPrepend.size() > 0;
-    }
-    virtual void prepend( std::ostringstream & output_ )
-    {
-        if( m_userPrepend.size() && m_output )
-        {
-            output_ << m_userPrepend;
-        }
-    }
-
-    std::string m_userPrepend;
-    UndecoratedLogger<T> * m_undecoratedLogger;
-    
-private:
-    std::vector< LoggerInterface * > m_wrappers;
-
-public:
-    /**@brief Registers a new wrapper */
-    void registerWrapper( LoggerInterface & _interface)
-    {
-        m_wrappers.push_back( &_interface );
-    }
-    
-    void unregisterWrapper( LoggerInterface & _interface)
-    {
-        m_wrappers.erase( std::remove(m_wrappers.begin(), m_wrappers.end(), &_interface), m_wrappers.end() );
-    }
-    
-    void updateOutput( std::ostream & _newOutput ) override
-    {
-        m_output = &_newOutput;
-        for (auto wrapper : m_wrappers)
-        {
-            (*wrapper).updateOutput( _newOutput );
-        }
-    }
-};
-
-//------------------------------------------------------------
-/**@private
- * @internal
- * @brief A class that is used to prevent prepend messages from being added too often */
-template <typename T>
-struct UndecoratedLogger : public LoggerImplementation<T>
-{
-    UndecoratedLogger( Loglevel _level = Loglevel::error )
-        :LoggerImplementation<T>( _level, true, false )
-    {
-
-    }
-    virtual void prepend(std::ostringstream &) override final {};
-    bool isDecorated() const
-    {
-        return false;
-    }
-};
-
-//------------------------------------------------------------
-template <typename T>
-T LoggerImplementation<T>::g_config;
-
-//------------------------------------------------------------
 /**@struct Logger
- * @brief Provides logging
- * @implements LoggerInterface
- *  
+ * @brief Logs messages
+ * @author qdii
+ *
  * Normally, users should not have to instantiate this class and should rather
  * use the already existing ones:
  *  - log_debug
@@ -462,53 +249,66 @@ T LoggerImplementation<T>::g_config;
  * The normal usage of a class is similar to std::cout. For instance, if I
  * wanted to log the return value of a function, I could type.
  * @code{.cpp}
- * log_debug << "the return value of foo() is: " << ret << std::endl;
+ * int main()
+ * {
+ *     const int ret = foo();
+ *     log_debug << "the return value of foo() is: " << ret << std::endl;
+ * }
  * @endcode
  */
-template<Loglevel LEVEL>
-struct Logger : public std::ostream, public LoggerInterface
+template< Loglevel Level >
+struct Logger : public std::ostream
 {
-    /**@brief Constructs a Logger
+    /**@brief Construct a logger
      * @private
-     * @internal
-     * @param[in] _muted Whether this logger should output anything
+     * @param[in] _muted Forbids the logger from outputting anything
+     * @param[in] _decorated Whether the logger can decorate user messages
+     * @warning There no reason why you would want to create a logger,
+     *          you should use already existing objects: log_debug,
+     *          log_trace, log_info, log_warning, log_error
      */
-    Logger(bool _muted = false)
-        :m_muted(_muted)
-    {
-        getSingleton().registerWrapper(*this);
-    }
-    
-    /**@brief Destruct a logger
-     * @private
-     * @internal
-     */
-    ~Logger()
-    {
-        getSingleton().unregisterWrapper( *this );
-    }
-    
-    /**@brief Get the static implementation 
-     * @private
-     * @internal
-     */
-    static LoggerImplementation<Traits> & getSingleton()
-    {
-        static LoggerImplementation<Traits> logger( LEVEL );
-        return logger;
-    }
+    explicit Logger( bool _muted = false, bool _decorated = true );
 
-    /**@brief Indicates where the messages will be written
-     * @return OK
-     * @param[in] _output an std::ostream into which the messages will be written
+    /**@brief Construct a copy of a Logger
+     * @param[in] _copy The other Logger you want to construct from
+     * @warning There no reason why you would want to create a logger,
+     *          you should use already existing objects: log_debug,
+     *          log_trace, log_info, log_warning, log_error         */
+    Logger( const Logger & _copy );
+
+    /**@brief Assign a logger to another 
+     * @private */
+    Logger & operator=( const Logger & _copy );
+
+    /**@brief Destruct a Logger */
+    virtual ~Logger();
+
+    /**@brief Writes the user message in the stream after customizations
+     * @private
+     * @return A logger */
+    virtual Logger treat( const std::string & _userMessage );
+
+    /**@brief Checks if the logger is muted
+     * @private
+     * @return True if it is, false if it is not
+     *
+     * A muted logger does not output anything. Normal loggers should not be
+     * muted.
      */
-    ErrorCode setOutput( std::ostream & _output )
-    {
-        getSingleton().updateOutput( _output );
-        return OK;
-    }
- 
-     /**
+    bool isMuted() const;
+
+    /**@brief Checks if the logger is decorated
+     * @private
+     * @return true if it is, false if it is not
+     *
+     * A decorated logger will append decoration to the user message.
+     * @see Logger::prepend( const std::string &)
+     */
+    bool isDecorated() const;
+
+    /**@brief Prepends all the user messages with some text.
+     * @param[in] _text The text to add before the log message.
+     * 
      * This function lets you add a custom text before any message logged.
      * For instance, if you want all warning messages to be preceded by
      * <c>WARNING: </c>, you could call
@@ -518,15 +318,18 @@ struct Logger : public std::ostream, public LoggerInterface
      * @code{.cpp}log_warning << "something odd happened\n"; @endcode
      * will write <c>WARNING: something odd happened</c>
      * @brief Adds a custom text before the message to log.
-     * @param[in] _prependText The text to add before the log message.
-     * @public
-     * @return OK if everything is fine.
-     * @warning Calling setPrependText many times cancels the text previously
-     *          set */
-    ErrorCode setPrependText( const std::string & _prependText ) override
-    {
-        return getSingleton().setPrependText( _prependText );
-    }
+     * @param[in] _text The text to add before the log message.
+     * @warning Calling setPrependText many times cancels any previously
+     *          set text. */
+    void prepend( const std::string & _text );
+
+    /**@brief Changes the output of the logger
+     * @param[in] _newOutput The output that will replace the former one
+     *
+     * Changing the output lets you decide where you want that stream to
+     * output your messages. This could be a file (using std::ofstream) or
+     * the console (via std::cout or std::cerr for instance) */
+    void setOutput( std::ostream & _newOutput );
 
     /**
      * <c>operator()</c> has been rewritten to provide a handy way to log
@@ -552,178 +355,334 @@ struct Logger : public std::ostream, public LoggerInterface
      * @return *this
      * @param[in] _condition The logging will be enabled only if
      *            _condition is true */
-    Logger && operator()( bool _condition )
-    {
-        static Logger nullLogger(true);
-        
-        if( _condition && getSingleton().canLog() )
-            return std::move( *this );
-        else
-            return std::move( nullLogger );
-    }
-    
-    /**@private
-     * @internal
-     * @brief Sets a new output to the parent stream object
-     * @param[in] _output The output to redirect to
-     */
-    void updateOutput( std::ostream & _output ) override
-    {
-        rdbuf( _output.rdbuf() );
-    }
+    Logger operator()( bool _condition );
 
-    /**@private
-     * @internal 
-     * @brief Checks if the stream is muted 
-     * @return true if the stream is muted, false if it is not */
-    bool isMuted() const
-    {
-        return m_muted;
-    }
-    
+public:
+    /**@brief Changes the output of all the loggers of this level
+     * @private */
+    static void setAllOutputs( std::ostream & _newOutput );
+
 private:
-    bool m_muted;
+    static const unsigned MUTED         = 0x00000001;
+    static const unsigned DECORATED     = 0x00000002;
+
+    std::vector<bool> m_flags;
+
+    /**@brief Checks whether the level of details is sufficient *
+     * @private
+     * @return true if it is, false if it is not
+     */
+    bool isGranularityOk() const;
+
+private:
+    struct Decoration
+    {
+        Decoration() : prependText() {}
+        std::string prependText;
+    };
+
+    Decoration * m_decoration;
+
+private:
+    // this section permits configuring things that apply to all the loggers
+    static std::vector<Logger *> m_allLoggers;
 };
-//------------------------------------------------------------
 
-template<Loglevel LEVEL, typename T>
-Logger<LEVEL> & operator<<( Logger<LEVEL> && _wrapper, T && _param )
+// -------------------------------------------------------------------------- //
+
+template<Loglevel Level>
+Logger<Level>::Logger( bool _muted, bool _decorated )
+    :std::ostream()
+    ,m_flags()
+    ,m_decoration( nullptr )
 {
-    if (!_wrapper.isMuted())
+    m_flags.reserve( 3 );
+    m_flags[MUTED] = _muted;
+    m_flags[DECORATED] = _decorated;
+
+    m_allLoggers.push_back( this );
+}
+
+// -------------------------------------------------------------------------- //
+
+template<Loglevel Level>
+Logger<Level>::Logger( const Logger & _copy )
+    :std::ostream()
+    ,m_flags( _copy.m_flags )
+    ,m_decoration( nullptr )
+{
+    setOutput( const_cast<Logger &>( _copy ) );
+    m_allLoggers.push_back( this );
+}
+
+// -------------------------------------------------------------------------- //
+
+template<Loglevel Level>
+std::vector<Logger<Level>*> Logger<Level>::m_allLoggers __attribute__(( init_priority( 65530 ) ));
+
+// -------------------------------------------------------------------------- //
+
+template<Loglevel Level> inline
+bool Logger<Level>::isMuted() const
+{
+    return m_flags[MUTED];
+}
+
+// -------------------------------------------------------------------------- //
+
+template<Loglevel Level> inline
+bool Logger<Level>::isDecorated() const
+{
+    return m_flags[DECORATED];
+}
+
+// -------------------------------------------------------------------------- //
+
+template<Loglevel Level>
+Logger<Level> Logger<Level>::treat( const std::string & _userMessage )
+{
+    if( !isMuted() && isGranularityOk() )
     {
-        std::string && logString = _wrapper.getSingleton().processLog( _param );
-        static_cast<std::ostream&>( _wrapper ) << logString;
+        std::string fullMessage;
+
+        if( isDecorated() && m_decoration )
+        {
+            fullMessage += m_decoration->prependText;
+        }
+
+        fullMessage += _userMessage;
+
+        static_cast<std::ostream &>( *this ) << fullMessage;
     }
-    return _wrapper;
+
+    Logger returnedLogger( isMuted(), false );
+    returnedLogger.setOutput( *this );
+
+    return returnedLogger;
 }
 
-//------------------------------------------------------------
 
-template<Loglevel LEVEL, typename T>
-Logger<LEVEL> & operator<<( Logger<LEVEL> & _wrapper, T && _param )
+
+// -------------------------------------------------------------------------- //
+
+template<Loglevel Level>
+void Logger<Level>::prepend( const std::string & _text )
 {
-    if (!_wrapper.isMuted())
+    if( !m_decoration )
+        m_decoration = new Logger::Decoration();
+
+    if( m_decoration )
+        m_decoration->prependText = _text;
+}
+
+// -------------------------------------------------------------------------- //
+
+template<Loglevel Level>
+Logger<Level> & Logger<Level>::operator=( const Logger<Level> & _copy )
+{
+    if( this == &_copy )
+        return *this;
+
+    Decoration * const newDecoration =
+        _copy.m_decoration ? new Decoration : nullptr;
+
+    try
     {
-        std::string && logString = _wrapper.getSingleton().processLog( _param );
-        static_cast<std::ostream&>( _wrapper ) << logString;
+        m_flags.reserve( _copy.m_flags.size() );
     }
-    return _wrapper;
+    catch( std::bad_alloc & e )
+    {
+        delete newDecoration;
+        throw;
+    }
+
+    if( newDecoration )
+    {
+        try
+        {
+            newDecoration->prependText.reserve(
+                _copy.m_decoration->prependText.size()
+            );
+        }
+        catch( std::bad_alloc & e )
+        {
+            delete newDecoration;
+            throw;
+        }
+    }
+
+    // if we made it to this point, then all memory has been allocated. yippi
+    // we can proceed to the copy itself
+    if (newDecoration)
+        newDecoration->prependText = _copy.m_decoration->prependText;
+        
+    m_flags = _copy.m_flags;
+
+    delete m_decoration;
+    m_decoration = newDecoration;
+
+    /**@todo Transférer le output aussi */
+    setOutput( const_cast<Logger &>( _copy ) );
+
+    return *this;
 }
 
-//------------------------------------------------------------
-static Logger<Loglevel::debug>    QDIILOG_NAME_LOGGER_DEBUG ;
-static Logger<Loglevel::trace>    QDIILOG_NAME_LOGGER_TRACE ;
-static Logger<Loglevel::info>     QDIILOG_NAME_LOGGER_INFO ;
-static Logger<Loglevel::warning>  QDIILOG_NAME_LOGGER_WARNING ;
-static Logger<Loglevel::error>    QDIILOG_NAME_LOGGER_ERROR ;
+// -------------------------------------------------------------------------- //
 
-//------------------------------------------------------------
-/**@brief Sets the level of detail
- * @param[in] _level is the granularity of the logging.
- * It can take 5 values:
- * - Loglevel::debug
- * - Loglevel::trace
- * - Loglevel::info
- * - Loglevel::warning
- * - Loglevel::error
- *
- * By changing the level of detail of the logging, the user prevents too
- * detailed messages from being output. For instance, if the level of
- * detail is Loglevel::warning, nothing but warning and error messages will
- * be output.
- *
- * @code{.cpp}
- * int main()
- * {
- *   setLogLevel( Loglevel::warning );
- *   log_debug << "this will not be written" << std::endl;
- *   log_warning << "but this will" << std::endl;
- *   log_error << "and that also" << std::endl;
- *
- *   return 0;
- * }
- * @endcode
- */
-inline
-void setLogLevel( Loglevel _level )
+template<Loglevel Level>
+Logger<Level>::~Logger()
 {
-    LoggerImplementation<Traits>::setLogLevel( _level );
+    delete m_decoration;
+    m_allLoggers.erase(
+        std::find(
+            m_allLoggers.begin(),
+            m_allLoggers.end(),
+            this
+        ),
+
+        m_allLoggers.end()
+    );
 }
 
-//------------------------------------------------------------
+// -------------------------------------------------------------------------- //
 
-/**@brief Redirects the output of all the loggers
- * @param[in] _output The std::ostream where the loggers should
- *                    write their messages
- * @return OK if everything goes well.
- *
- * This causes all the loggers to output their messages on another ostream
- * than the previous one. This is exactly the same thing as calling the member
- * function setOutput on the 5 loggers.
- */
-inline
-ErrorCode setOutput( std::ostream & _output )
+/**@brief Stream out an user message
+ * @param[in] _logger The logger which will take care of the user message
+ * @param[in] _message The message of the user.
+ * @return A logger (which might be different  */
+template<Loglevel Level,  typename UserMessage>
+Logger<Level> operator<<( Logger<Level> & _logger, const UserMessage & _message )
 {
-    ErrorCode ret = QDIILOG_NAME_LOGGER_DEBUG .setOutput( _output );
-
-    if( ret == OK )
-        ret = QDIILOG_NAME_LOGGER_TRACE .setOutput( _output );
-
-    if( ret == OK )
-        ret = QDIILOG_NAME_LOGGER_INFO .setOutput( _output );
-
-    if( ret == OK )
-        ret = QDIILOG_NAME_LOGGER_WARNING .setOutput( _output );
-
-    if( ret == OK )
-        ret = QDIILOG_NAME_LOGGER_ERROR .setOutput( _output );
-
-    return ret;
+    return std::move( _logger ) << _message;
 }
 
-//------------------------------------------------------------
-inline
-ErrorCode setPrependText( const std::string & _prependText )
+// -------------------------------------------------------------------------- //
+
+/**@brief Stream out an user message
+ * @param[in] _logger The logger which will take care of the user message
+ * @param[in] _message The message of the user.
+ * @return A logger (which might be different  */
+template<Loglevel Level,  typename UserMessage>
+Logger<Level> operator<<( Logger<Level> && _logger, const UserMessage & _message )
 {
-    ErrorCode ret = QDIILOG_NAME_LOGGER_DEBUG .setPrependText( _prependText );
-
-    if( ret == OK )
-        ret = QDIILOG_NAME_LOGGER_TRACE .setPrependText( _prependText );
-
-    if( ret == OK )
-        ret = QDIILOG_NAME_LOGGER_INFO .setPrependText( _prependText );
-
-    if( ret == OK )
-        ret = QDIILOG_NAME_LOGGER_WARNING .setPrependText( _prependText );
-
-    if( ret == OK )
-        ret = QDIILOG_NAME_LOGGER_ERROR .setPrependText( _prependText );
-
-    return ret;
+    std::ostringstream istr;
+    istr << _message;
+    return _logger.treat( istr.str() );
 }
 
-//------------------------------------------------------------
-inline
-ErrorCode setPrependTextQdiiFlavour()
+// -------------------------------------------------------------------------- //
+
+/**@brief Changes the output of all the loggers of this level */
+template<Loglevel Level>
+void Logger<Level>::setAllOutputs( std::ostream & _newOutput )
 {
-    ErrorCode ret = QDIILOG_NAME_LOGGER_DEBUG .setPrependText( "" );
-
-    if( ret == OK )
-        ret = QDIILOG_NAME_LOGGER_TRACE .setPrependText( "" );
-
-    if( ret == OK )
-        ret = QDIILOG_NAME_LOGGER_INFO .setPrependText( "[..] " );
-
-    if( ret == OK )
-        ret = QDIILOG_NAME_LOGGER_WARNING .setPrependText( "[ww] " );
-
-    if( ret == OK )
-        ret = QDIILOG_NAME_LOGGER_ERROR .setPrependText( "[EE] " );
-
-    return ret;
+    for( typename std::vector<Logger *>::iterator logger = m_allLoggers.begin();
+            logger != m_allLoggers.end(); ++logger )
+    {
+        ( *logger )->setOutput( _newOutput );
+    }
 }
 
-//------------------------------------------------------------
+// -------------------------------------------------------------------------- //
+
+template<Loglevel Level>
+void Logger<Level>::setOutput( std::ostream & _newOutput )
+{
+    //assert( _newOutput.rdbuf() );
+    std::ostream::rdbuf( _newOutput.rdbuf() );
+}
+
+// -------------------------------------------------------------------------- //
+
+template<Loglevel Level>
+bool Logger<Level>::isGranularityOk() const
+{
+    bool doesLevelAllowLogging = false;
+
+    switch( Level )
+    {
+    case Loglevel::error:
+        doesLevelAllowLogging |= ( UserFilter<int>::level == Loglevel::error );
+
+    case Loglevel::warning:
+        doesLevelAllowLogging |= ( UserFilter<int>::level == Loglevel::warning );
+
+    case Loglevel::info:
+        doesLevelAllowLogging |= ( UserFilter<int>::level == Loglevel::info );
+
+    case Loglevel::trace:
+        doesLevelAllowLogging |= ( UserFilter<int>::level == Loglevel::trace );
+
+    case Loglevel::debug:
+        doesLevelAllowLogging |= ( UserFilter<int>::level == Loglevel::debug );
+        break;
+
+    case Loglevel::disable:
+        doesLevelAllowLogging = false;
+        break;
+    }
+
+    return doesLevelAllowLogging;
+}
+
+// -------------------------------------------------------------------------- //
+
+template<Loglevel Level>
+Logger<Level> Logger<Level>::operator()( bool _condition )
+{
+    Logger<Level> logger( !_condition, true );
+
+    if( _condition )
+    {
+        logger = *this;
+    }
+
+    return logger;
+}
+
+// -------------------------------------------------------------------------- //
+
+inline
+void setOutput( std::ostream & _newOutput )
+{
+    Logger<Loglevel::debug>::setAllOutputs( _newOutput );
+    Logger<Loglevel::trace>::setAllOutputs( _newOutput );
+    Logger<Loglevel::info>::setAllOutputs( _newOutput );
+    Logger<Loglevel::warning>::setAllOutputs( _newOutput );
+    Logger<Loglevel::error>::setAllOutputs( _newOutput );
+}
+
+// -------------------------------------------------------------------------- //
+
+static
+Logger<Loglevel::debug> QDIILOG_NAME_LOGGER_DEBUG __attribute__(( init_priority( 65535 ) ));
+
+static
+Logger<Loglevel::trace> QDIILOG_NAME_LOGGER_TRACE __attribute__(( init_priority( 65534 ) ));
+
+static
+Logger<Loglevel::info> QDIILOG_NAME_LOGGER_INFO __attribute__(( init_priority( 65533 ) ));
+
+static
+Logger<Loglevel::warning> QDIILOG_NAME_LOGGER_WARNING __attribute__(( init_priority( 65532 ) ));
+
+static
+Logger<Loglevel::error> QDIILOG_NAME_LOGGER_ERROR __attribute__(( init_priority( 65531 ) ));
+
+// -------------------------------------------------------------------------- //
+
+inline
+void setPrependTextQdiiFlavour()
+{
+    QDIILOG_NAME_LOGGER_DEBUG   .prepend( "" );
+    QDIILOG_NAME_LOGGER_TRACE   .prepend( "" );
+    QDIILOG_NAME_LOGGER_INFO    .prepend( "[..] " );
+    QDIILOG_NAME_LOGGER_WARNING .prepend( "[ww] " );
+    QDIILOG_NAME_LOGGER_ERROR   .prepend( "[EE] " );
+}
+
+// -------------------------------------------------------------------------- //
+
 enum BashColor
 {
     NONE = 0,
@@ -732,9 +691,11 @@ enum BashColor
     CYAN, WHITE
 };
 
-//------------------------------------------------------------
+// -------------------------------------------------------------------------- //
+
 static
-std::string set_color( BashColor _foreground = NONE, BashColor _background = NONE )
+std::string setBashColor( BashColor _foreground = NONE, 
+                          BashColor _background = NONE )
 {
     std::ostringstream transform;
     transform << "\033[";
@@ -757,29 +718,18 @@ std::string set_color( BashColor _foreground = NONE, BashColor _background = NON
     return transform.str();
 }
 
-//------------------------------------------------------------
+// -------------------------------------------------------------------------- //
+
 inline
-ErrorCode setPrependedTextQdiiFlavourBashColors()
+void setPrependedTextQdiiFlavourBashColors()
 {
-    ErrorCode ret = QDIILOG_NAME_LOGGER_DEBUG .setPrependText( "" );
-
-    if( ret == OK )
-        ret = QDIILOG_NAME_LOGGER_TRACE .setPrependText( "" );
-
-    if( ret == OK )
-        ret = QDIILOG_NAME_LOGGER_INFO .setPrependText( "[..] " );
-
-    if( ret == OK )
-        ret = QDIILOG_NAME_LOGGER_WARNING .setPrependText( std::string( "[" ) + set_color( GREEN ) + "ww" + set_color( NONE ) + "] " );
-
-    if( ret == OK )
-        ret = QDIILOG_NAME_LOGGER_ERROR .setPrependText( std::string( "[" ) + set_color( RED ) + "EE" + set_color( NONE ) + "] " );
-
-    return ret;
+    QDIILOG_NAME_LOGGER_DEBUG   .prepend( "" );
+    QDIILOG_NAME_LOGGER_TRACE   .prepend( "" );
+    QDIILOG_NAME_LOGGER_INFO    .prepend( "[..] " );
+    QDIILOG_NAME_LOGGER_WARNING .prepend( std::string( "[" ) + setBashColor( GREEN ) + "ww" + setBashColor( NONE ) + "] " );
+    QDIILOG_NAME_LOGGER_ERROR   .prepend( std::string( "[" ) + setBashColor( RED ) + "EE" + setBashColor( NONE ) + "] " );
 }
 
-#ifdef QDIILOG_NAMESPACE
-}
-#endif //QDIILOG_NAMESPACE
+QDIILOG_NS_END
 
-#endif //QDIILOG_H
+#endif //QDILOG_2_0
