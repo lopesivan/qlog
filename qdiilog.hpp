@@ -361,6 +361,11 @@ public:
     /**@brief Changes the output of all the loggers of this level
      * @private */
     static void setAllOutputs( std::ostream & _newOutput );
+    
+    /**@brief Prepends the same text to all loggers of this level
+     * @param[in] _text The _text to prepend
+     * @private */
+    static void prependAll( const std::string & _text);
 
 private:
     static const unsigned MUTED         = 0x00000001;
@@ -550,7 +555,7 @@ Logger<Level>::~Logger()
  * @param[in] _logger The logger which will take care of the user message
  * @param[in] _message The message of the user.
  * @return A logger (which might be different  */
-template<Loglevel Level,  typename UserMessage>
+template<Loglevel Level, typename UserMessage>
 Logger<Level> operator<<( Logger<Level> & _logger, const UserMessage & _message )
 {
     return std::move( _logger ) << _message;
@@ -562,7 +567,7 @@ Logger<Level> operator<<( Logger<Level> & _logger, const UserMessage & _message 
  * @param[in] _logger The logger which will take care of the user message
  * @param[in] _message The message of the user.
  * @return A logger (which might be different  */
-template<Loglevel Level,  typename UserMessage>
+template<Loglevel Level, typename UserMessage>
 Logger<Level> operator<<( Logger<Level> && _logger, const UserMessage & _message )
 {
     std::ostringstream istr;
@@ -576,10 +581,25 @@ Logger<Level> operator<<( Logger<Level> && _logger, const UserMessage & _message
 template<Loglevel Level>
 void Logger<Level>::setAllOutputs( std::ostream & _newOutput )
 {
+    const auto end = m_allLoggers.end();
     for( typename std::vector<Logger *>::iterator logger = m_allLoggers.begin();
-            logger != m_allLoggers.end(); ++logger )
+            logger != end; ++logger )
     {
         ( *logger )->setOutput( _newOutput );
+    }
+}
+
+// -------------------------------------------------------------------------- //
+
+/**@brief Changes the output of all the loggers of this level */
+template<Loglevel Level>
+void Logger<Level>::prependAll( const std::string & _text )
+{
+    const auto end = m_allLoggers.end();
+    for( typename std::vector<Logger *>::iterator logger = m_allLoggers.begin();
+            logger != end; ++logger )
+    {
+        ( *logger )->prepend( _text );
     }
 }
 
@@ -674,11 +694,11 @@ Logger<Loglevel::error> QDIILOG_NAME_LOGGER_ERROR __attribute__(( init_priority(
 inline
 void setPrependTextQdiiFlavour()
 {
-    QDIILOG_NAME_LOGGER_DEBUG   .prepend( "" );
-    QDIILOG_NAME_LOGGER_TRACE   .prepend( "" );
-    QDIILOG_NAME_LOGGER_INFO    .prepend( "[..] " );
-    QDIILOG_NAME_LOGGER_WARNING .prepend( "[ww] " );
-    QDIILOG_NAME_LOGGER_ERROR   .prepend( "[EE] " );
+    QDIILOG_NAME_LOGGER_DEBUG   .prependAll( "" );
+    QDIILOG_NAME_LOGGER_TRACE   .prependAll( "" );
+    QDIILOG_NAME_LOGGER_INFO    .prependAll( "[..] " );
+    QDIILOG_NAME_LOGGER_WARNING .prependAll( "[ww] " );
+    QDIILOG_NAME_LOGGER_ERROR   .prependAll( "[EE] " );
 }
 
 // -------------------------------------------------------------------------- //
@@ -723,11 +743,11 @@ std::string setBashColor( BashColor _foreground = NONE,
 inline
 void setPrependedTextQdiiFlavourBashColors()
 {
-    QDIILOG_NAME_LOGGER_DEBUG   .prepend( "" );
-    QDIILOG_NAME_LOGGER_TRACE   .prepend( "" );
-    QDIILOG_NAME_LOGGER_INFO    .prepend( "[..] " );
-    QDIILOG_NAME_LOGGER_WARNING .prepend( std::string( "[" ) + setBashColor( GREEN ) + "ww" + setBashColor( NONE ) + "] " );
-    QDIILOG_NAME_LOGGER_ERROR   .prepend( std::string( "[" ) + setBashColor( RED ) + "EE" + setBashColor( NONE ) + "] " );
+    QDIILOG_NAME_LOGGER_DEBUG   .prependAll( "" );
+    QDIILOG_NAME_LOGGER_TRACE   .prependAll( "" );
+    QDIILOG_NAME_LOGGER_INFO    .prependAll( "[..] " );
+    QDIILOG_NAME_LOGGER_WARNING .prependAll( std::string( "[" ) + setBashColor( GREEN ) + "ww" + setBashColor( NONE ) + "] " );
+    QDIILOG_NAME_LOGGER_ERROR   .prependAll( std::string( "[" ) + setBashColor( RED ) + "EE" + setBashColor( NONE ) + "] " );
 }
 
 QDIILOG_NS_END
