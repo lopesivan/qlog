@@ -397,7 +397,8 @@ private:
 
 template<Loglevel Level>
 Logger<Level>::Logger( bool _muted, bool _decorated )
-    :std::ostream()
+    :std::basic_ios<char>()
+    ,std::basic_ostream<char>()
     ,m_flags()
     ,m_decoration( nullptr )
 {
@@ -412,7 +413,8 @@ Logger<Level>::Logger( bool _muted, bool _decorated )
 
 template<Loglevel Level>
 Logger<Level>::Logger( const Logger & _copy )
-    :std::ostream()
+    :std::basic_ios<char>()
+    ,std::basic_ostream<char>()
     ,m_flags( _copy.m_flags )
     ,m_decoration( nullptr )
 {
@@ -715,26 +717,31 @@ enum BashColor
 
 static
 std::string setBashColor( BashColor _foreground = NONE, 
-                          BashColor _background = NONE )
+                          BashColor _background = NONE,
+                          bool _bold = false )
 {
     std::ostringstream transform;
-    transform << "\033[";
-
-    if( !_foreground && ! _background ) transform << "0"; // reset colors if no params
-
-    if( _foreground != NONE )
+    transform << (_bold ? "\033[1m" : "\033[0m");
+    
+    if (_foreground != NONE || _background != NONE)
     {
-        transform << 29 + _foreground;
+        transform << "\033[";
 
-        if( _background ) transform << ";";
+        if( _foreground != NONE )
+        {
+            transform << 29 + _foreground;
+
+            if( _background ) transform << ";";
+        }
+
+        if( _background != NONE )
+        {
+            transform << 39 + _background;
+        }
+
+        transform << "m";
     }
 
-    if( _background != NONE )
-    {
-        transform << 39 + _background;
-    }
-
-    transform << "m";
     return transform.str();
 }
 
@@ -743,11 +750,11 @@ std::string setBashColor( BashColor _foreground = NONE,
 inline
 void setPrependedTextQdiiFlavourBashColors()
 {
-    QDIILOG_NAME_LOGGER_DEBUG   .prependAll( "" );
-    QDIILOG_NAME_LOGGER_TRACE   .prependAll( "" );
-    QDIILOG_NAME_LOGGER_INFO    .prependAll( "[..] " );
-    QDIILOG_NAME_LOGGER_WARNING .prependAll( std::string( "[" ) + setBashColor( GREEN ) + "ww" + setBashColor( NONE ) + "] " );
-    QDIILOG_NAME_LOGGER_ERROR   .prependAll( std::string( "[" ) + setBashColor( RED ) + "EE" + setBashColor( NONE ) + "] " );
+    QDIILOG_NAME_LOGGER_DEBUG   .prependAll( setBashColor( NONE, NONE, false ) );
+    QDIILOG_NAME_LOGGER_TRACE   .prependAll( setBashColor( NONE, NONE, false ) );
+    QDIILOG_NAME_LOGGER_INFO    .prependAll( setBashColor( NONE, NONE, false ) + "[..] " );
+    QDIILOG_NAME_LOGGER_WARNING .prependAll( std::string( "[" ) + setBashColor( GREEN ) + "ww" + setBashColor( NONE ) + "] ");
+    QDIILOG_NAME_LOGGER_ERROR   .prependAll( std::string( "[" ) + setBashColor( RED ) + "EE" + setBashColor( NONE ) + "]" + setBashColor( NONE, NONE, true ) + " ");
 }
 
 QDIILOG_NS_END
