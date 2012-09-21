@@ -390,7 +390,31 @@ private:
 
 private:
     // this section permits configuring things that apply to all the loggers
-    static std::vector<Logger *> m_allLoggers;
+    static std::vector<Logger *> * m_allLoggers;
+    static void registerMe(Logger & _logger)
+    {
+        if (!m_allLoggers)
+            m_allLoggers = new std::vector<Logger *>();
+        m_allLoggers->push_back(&_logger);
+    }
+    
+    static void unregisterMe( Logger & _logger )
+    {
+        m_allLoggers->erase(
+            std::find(
+                m_allLoggers->begin(),
+                m_allLoggers->end(),
+                &_logger
+            ),
+            m_allLoggers->end()
+        );
+        
+        if (m_allLoggers->empty())
+        {
+            delete m_allLoggers;
+            m_allLoggers = nullptr;
+        }
+    }
 };
 
 // -------------------------------------------------------------------------- //
@@ -406,7 +430,7 @@ Logger<Level>::Logger( bool _muted, bool _decorated )
     m_flags[MUTED] = _muted;
     m_flags[DECORATED] = _decorated;
 
-    m_allLoggers.push_back( this );
+    registerMe(*this);
 }
 
 // -------------------------------------------------------------------------- //
@@ -419,13 +443,14 @@ Logger<Level>::Logger( const Logger & _copy )
     ,m_decoration( nullptr )
 {
     setOutput( const_cast<Logger &>( _copy ) );
-    m_allLoggers.push_back( this );
+    
+    registerMe(*this);
 }
 
 // -------------------------------------------------------------------------- //
 
 template<Loglevel Level>
-std::vector<Logger<Level>*> Logger<Level>::m_allLoggers __attribute__(( init_priority( 65530 ) ));
+std::vector<Logger<Level>*>* Logger<Level>::m_allLoggers;
 
 // -------------------------------------------------------------------------- //
 
@@ -540,15 +565,7 @@ template<Loglevel Level>
 Logger<Level>::~Logger()
 {
     delete m_decoration;
-    m_allLoggers.erase(
-        std::find(
-            m_allLoggers.begin(),
-            m_allLoggers.end(),
-            this
-        ),
-
-        m_allLoggers.end()
-    );
+    unregisterMe(*this);
 }
 
 // -------------------------------------------------------------------------- //
@@ -587,8 +604,8 @@ Logger<Level> operator<<( Logger<Level> && _logger, const UserMessage & _message
 template<Loglevel Level>
 void Logger<Level>::setAllOutputs( std::ostream & _newOutput )
 {
-    const auto end = m_allLoggers.end();
-    for( typename std::vector<Logger *>::iterator logger = m_allLoggers.begin();
+    const auto end = m_allLoggers->end();
+    for( typename std::vector<Logger *>::iterator logger = m_allLoggers->begin();
             logger != end; ++logger )
     {
         ( *logger )->setOutput( _newOutput );
@@ -601,8 +618,8 @@ void Logger<Level>::setAllOutputs( std::ostream & _newOutput )
 template<Loglevel Level>
 void Logger<Level>::prependAll( const std::string & _text )
 {
-    const auto end = m_allLoggers.end();
-    for( typename std::vector<Logger *>::iterator logger = m_allLoggers.begin();
+    const auto end = m_allLoggers->end();
+    for( typename std::vector<Logger *>::iterator logger = m_allLoggers->begin();
             logger != end; ++logger )
     {
         ( *logger )->prepend( _text );
@@ -681,19 +698,19 @@ void setOutput( std::ostream & _newOutput )
 // -------------------------------------------------------------------------- //
 
 static
-Logger<Loglevel::debug> QDIILOG_NAME_LOGGER_DEBUG __attribute__(( init_priority( 65535 ) ));
+Logger<Loglevel::debug> QDIILOG_NAME_LOGGER_DEBUG ;
 
 static
-Logger<Loglevel::trace> QDIILOG_NAME_LOGGER_TRACE __attribute__(( init_priority( 65534 ) ));
+Logger<Loglevel::trace> QDIILOG_NAME_LOGGER_TRACE ;
 
 static
-Logger<Loglevel::info> QDIILOG_NAME_LOGGER_INFO __attribute__(( init_priority( 65533 ) ));
+Logger<Loglevel::info> QDIILOG_NAME_LOGGER_INFO ;
 
 static
-Logger<Loglevel::warning> QDIILOG_NAME_LOGGER_WARNING __attribute__(( init_priority( 65532 ) ));
+Logger<Loglevel::warning> QDIILOG_NAME_LOGGER_WARNING ;
 
 static
-Logger<Loglevel::error> QDIILOG_NAME_LOGGER_ERROR __attribute__(( init_priority( 65531 ) ));
+Logger<Loglevel::error> QDIILOG_NAME_LOGGER_ERROR ;
 
 // -------------------------------------------------------------------------- //
 
