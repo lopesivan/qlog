@@ -572,9 +572,13 @@ Logger<Level> operator<<( Logger<Level> & _logger, const UserMessage & _message 
 template<Loglevel Level, typename UserMessage>
 Logger<Level> operator<<( Logger<Level> && _logger, const UserMessage & _message )
 {
-    std::ostringstream istr;
-    istr << _message;
-    return _logger.treat( istr.str() );
+    if (!_logger.isMuted())
+    {
+        std::ostringstream istr;
+        istr << _message;
+        return _logger.treat( istr.str() );
+    }
+    return _logger;
 }
 
 // -------------------------------------------------------------------------- //
