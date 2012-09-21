@@ -356,6 +356,12 @@ struct Logger : public std::ostream
      * @param[in] _condition The logging will be enabled only if
      *            _condition is true */
     Logger operator()( bool _condition );
+    
+    /**@brief Checks whether the level of details is sufficient *
+     * @private
+     * @return true if it is, false if it is not
+     */
+    bool isGranularityOk() const;
 
 public:
     /**@brief Changes the output of all the loggers of this level
@@ -373,11 +379,7 @@ private:
 
     std::vector<bool> m_flags;
 
-    /**@brief Checks whether the level of details is sufficient *
-     * @private
-     * @return true if it is, false if it is not
-     */
-    bool isGranularityOk() const;
+
 
 private:
     struct Decoration
@@ -566,6 +568,28 @@ Logger<Level>::~Logger()
 {
     delete m_decoration;
     unregisterMe(*this);
+}
+
+// -------------------------------------------------------------------------- //
+
+// hack to catch std::endl;
+typedef std::basic_ostream<char, std::char_traits<char> > CoutType;
+typedef CoutType & ( *StandardEndLine )( CoutType & );
+
+template<Loglevel Level>
+Logger<Level> && operator<<( Logger<Level> & _logger, StandardEndLine _endl)
+{
+    return std::move(_logger) << _endl;
+}
+
+template<Loglevel Level>
+Logger<Level> && operator<<( Logger<Level> && _logger, StandardEndLine _endl)
+{
+    if (!_logger.isMuted() && _logger.isGranularityOk())
+    {
+        _endl( _logger );
+    }
+    return std::move(_logger);
 }
 
 // -------------------------------------------------------------------------- //
