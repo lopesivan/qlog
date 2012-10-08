@@ -149,7 +149,7 @@
  * log_warning( foo() != SUCCESS ) << "problem" << std::endl;
  * @endcode
  */
- 
+
 // ___________________________  INCLUDES  ____________________________________
 
 #include <iostream>
@@ -276,7 +276,7 @@ struct Logger : public std::ostream
      *          log_trace, log_info, log_warning, log_error         */
     Logger( const Logger & _copy );
 
-    /**@brief Assign a logger to another 
+    /**@brief Assign a logger to another
      * @private */
     Logger & operator=( const Logger & _copy );
 
@@ -308,7 +308,7 @@ struct Logger : public std::ostream
 
     /**@brief Prepends all the user messages with some text.
      * @param[in] _text The text to add before the log message.
-     * 
+     *
      * This function lets you add a custom text before any message logged.
      * For instance, if you want all warning messages to be preceded by
      * <c>WARNING: </c>, you could call
@@ -356,7 +356,7 @@ struct Logger : public std::ostream
      * @param[in] _condition The logging will be enabled only if
      *            _condition is true */
     Logger operator()( bool _condition );
-    
+
     /**@brief Checks whether the level of details is sufficient *
      * @private
      * @return true if it is, false if it is not
@@ -367,19 +367,15 @@ public:
     /**@brief Changes the output of all the loggers of this level
      * @private */
     static void setAllOutputs( std::ostream & _newOutput );
-    
+
     /**@brief Prepends the same text to all loggers of this level
      * @param[in] _text The _text to prepend
      * @private */
-    static void prependAll( const std::string & _text);
+    static void prependAll( const std::string & _text );
 
 private:
-    static const unsigned MUTED         = 0x00000001;
-    static const unsigned DECORATED     = 0x00000002;
-
-    std::vector<bool> m_flags;
-
-
+    bool m_isDecorated;
+    bool m_isMuted;
 
 private:
     struct Decoration
@@ -393,13 +389,14 @@ private:
 private:
     // this section permits configuring things that apply to all the loggers
     static std::vector<Logger *> * m_allLoggers;
-    static void registerMe(Logger & _logger)
+    static void registerMe( Logger & _logger )
     {
-        if (!m_allLoggers)
+        if( !m_allLoggers )
             m_allLoggers = new std::vector<Logger *>();
-        m_allLoggers->push_back(&_logger);
+
+        m_allLoggers->push_back( &_logger );
     }
-    
+
     static void unregisterMe( Logger & _logger )
     {
         m_allLoggers->erase(
@@ -410,8 +407,8 @@ private:
             ),
             m_allLoggers->end()
         );
-        
-        if (m_allLoggers->empty())
+
+        if( m_allLoggers->empty() )
         {
             delete m_allLoggers;
             m_allLoggers = nullptr;
@@ -425,14 +422,11 @@ template<Loglevel Level>
 Logger<Level>::Logger( bool _muted, bool _decorated )
     :std::basic_ios<char>()
     ,std::basic_ostream<char>()
-    ,m_flags()
+    ,m_isDecorated( _decorated )
+    ,m_isMuted( _muted )
     ,m_decoration( nullptr )
 {
-    m_flags.reserve( 3 );
-    m_flags[MUTED] = _muted;
-    m_flags[DECORATED] = _decorated;
-
-    registerMe(*this);
+    registerMe( *this );
 }
 
 // -------------------------------------------------------------------------- //
@@ -441,12 +435,13 @@ template<Loglevel Level>
 Logger<Level>::Logger( const Logger & _copy )
     :std::basic_ios<char>()
     ,std::basic_ostream<char>()
-    ,m_flags( _copy.m_flags )
+    ,m_isDecorated( _copy.m_isDecorated )
+    ,m_isMuted( _copy.m_isMuted )
     ,m_decoration( nullptr )
 {
     setOutput( const_cast<Logger &>( _copy ) );
-    
-    registerMe(*this);
+
+    registerMe( *this );
 }
 
 // -------------------------------------------------------------------------- //
@@ -459,7 +454,7 @@ std::vector<Logger<Level>*>* Logger<Level>::m_allLoggers;
 template<Loglevel Level> inline
 bool Logger<Level>::isMuted() const
 {
-    return m_flags[MUTED];
+    return m_isMuted;
 }
 
 // -------------------------------------------------------------------------- //
@@ -467,7 +462,7 @@ bool Logger<Level>::isMuted() const
 template<Loglevel Level> inline
 bool Logger<Level>::isDecorated() const
 {
-    return m_flags[DECORATED];
+    return m_isDecorated;
 }
 
 // -------------------------------------------------------------------------- //
@@ -520,16 +515,6 @@ Logger<Level> & Logger<Level>::operator=( const Logger<Level> & _copy )
     Decoration * const newDecoration =
         _copy.m_decoration ? new Decoration : nullptr;
 
-    try
-    {
-        m_flags.reserve( _copy.m_flags.size() );
-    }
-    catch( std::bad_alloc & e )
-    {
-        delete newDecoration;
-        throw;
-    }
-
     if( newDecoration )
     {
         try
@@ -547,10 +532,11 @@ Logger<Level> & Logger<Level>::operator=( const Logger<Level> & _copy )
 
     // if we made it to this point, then all memory has been allocated. yippi
     // we can proceed to the copy itself
-    if (newDecoration)
+    if( newDecoration )
         newDecoration->prependText = _copy.m_decoration->prependText;
-        
-    m_flags = _copy.m_flags;
+
+    m_isDecorated = _copy.m_isDecorated;
+    m_isMuted     = _copy.m_isMuted;
 
     delete m_decoration;
     m_decoration = newDecoration;
@@ -567,7 +553,7 @@ template<Loglevel Level>
 Logger<Level>::~Logger()
 {
     delete m_decoration;
-    unregisterMe(*this);
+    unregisterMe( *this );
 }
 
 // -------------------------------------------------------------------------- //
@@ -577,19 +563,20 @@ typedef std::basic_ostream<char, std::char_traits<char> > CoutType;
 typedef CoutType & ( *StandardEndLine )( CoutType & );
 
 template<Loglevel Level>
-Logger<Level> && operator<<( Logger<Level> & _logger, StandardEndLine _endl)
+Logger<Level> && operator<<( Logger<Level> & _logger, StandardEndLine _endl )
 {
-    return std::move(_logger) << _endl;
+    return std::move( _logger ) << _endl;
 }
 
 template<Loglevel Level>
-Logger<Level> && operator<<( Logger<Level> && _logger, StandardEndLine _endl)
+Logger<Level> && operator<<( Logger<Level> && _logger, StandardEndLine _endl )
 {
-    if (!_logger.isMuted() && _logger.isGranularityOk())
+    if( !_logger.isMuted() && _logger.isGranularityOk() )
     {
         _endl( _logger );
     }
-    return std::move(_logger);
+
+    return std::move( _logger );
 }
 
 // -------------------------------------------------------------------------- //
@@ -613,12 +600,13 @@ Logger<Level> operator<<( Logger<Level> & _logger, const UserMessage & _message 
 template<Loglevel Level, typename UserMessage>
 Logger<Level> operator<<( Logger<Level> && _logger, const UserMessage & _message )
 {
-    if (!_logger.isMuted())
+    if( !_logger.isMuted() )
     {
         std::ostringstream istr;
         istr << _message;
         return _logger.treat( istr.str() );
     }
+
     return _logger;
 }
 
@@ -629,6 +617,7 @@ template<Loglevel Level>
 void Logger<Level>::setAllOutputs( std::ostream & _newOutput )
 {
     const auto end = m_allLoggers->end();
+
     for( typename std::vector<Logger *>::iterator logger = m_allLoggers->begin();
             logger != end; ++logger )
     {
@@ -643,6 +632,7 @@ template<Loglevel Level>
 void Logger<Level>::prependAll( const std::string & _text )
 {
     const auto end = m_allLoggers->end();
+
     for( typename std::vector<Logger *>::iterator logger = m_allLoggers->begin();
             logger != end; ++logger )
     {
@@ -761,14 +751,14 @@ enum BashColor
 // -------------------------------------------------------------------------- //
 
 static
-std::string setBashColor( BashColor _foreground = NONE, 
+std::string setBashColor( BashColor _foreground = NONE,
                           BashColor _background = NONE,
                           bool _bold = false )
 {
     std::ostringstream transform;
-    transform << (_bold ? "\033[1m" : "\033[0m");
-    
-    if (_foreground != NONE || _background != NONE)
+    transform << ( _bold ? "\033[1m" : "\033[0m" );
+
+    if( _foreground != NONE || _background != NONE )
     {
         transform << "\033[";
 
@@ -798,8 +788,8 @@ void setPrependedTextQdiiFlavourBashColors()
     QDIILOG_NAME_LOGGER_DEBUG   .prependAll( setBashColor( NONE, NONE, false ) );
     QDIILOG_NAME_LOGGER_TRACE   .prependAll( setBashColor( NONE, NONE, false ) );
     QDIILOG_NAME_LOGGER_INFO    .prependAll( setBashColor( NONE, NONE, false ) + "[..] " );
-    QDIILOG_NAME_LOGGER_WARNING .prependAll( std::string( "[" ) + setBashColor( GREEN ) + "ww" + setBashColor( NONE ) + "] ");
-    QDIILOG_NAME_LOGGER_ERROR   .prependAll( std::string( "[" ) + setBashColor( RED ) + "EE" + setBashColor( NONE ) + "]" + setBashColor( NONE, NONE, true ) + " ");
+    QDIILOG_NAME_LOGGER_WARNING .prependAll( std::string( "[" ) + setBashColor( GREEN ) + "ww" + setBashColor( NONE ) + "] " );
+    QDIILOG_NAME_LOGGER_ERROR   .prependAll( std::string( "[" ) + setBashColor( RED ) + "EE" + setBashColor( NONE ) + "]" + setBashColor( NONE, NONE, true ) + " " );
 }
 
 QDIILOG_NS_END
