@@ -177,6 +177,9 @@
 #   ifdef BOOST_NO_SCOPED_ENUMS
 #       define QDIILOG_NO_SCOPED_ENUMS
 #   endif
+#   ifdef BOOST_NO_NULLPTR
+#       define nullptr 0
+#   endif
 #else
 #   define QDIILOG_NO_SCOPED_ENUMS
 #endif
@@ -643,21 +646,18 @@ Logger<Level>::~Logger()
 typedef std::basic_ostream<char, std::char_traits<char> > CoutType;
 typedef CoutType & ( *StandardEndLine )( CoutType & );
 
-template< QDIILOG_TEMPLATE_DECL Level >
-Logger<Level> && operator<<( Logger<Level> & _logger, StandardEndLine _endl )
-{
-    return std::move( _logger ) << _endl;
-}
+// -------------------------------------------------------------------------- //
 
 template< QDIILOG_TEMPLATE_DECL Level >
-Logger<Level> && operator<<( Logger<Level> && _logger, StandardEndLine _endl )
+Logger<Level> operator<<( const Logger<Level> & _logger, StandardEndLine _endl )
 {
-    if( !_logger.isMuted() && _logger.isGranularityOk() )
+    Logger<Level> & logger = const_cast< Logger<Level> & >(_logger);
+    if( !logger.isMuted() && logger.isGranularityOk() )
     {
-        _endl( _logger );
+        _endl( logger );
     }
 
-    return std::move( _logger );
+    return logger;
 }
 
 // -------------------------------------------------------------------------- //
@@ -667,32 +667,21 @@ Logger<Level> && operator<<( Logger<Level> && _logger, StandardEndLine _endl )
  * @param[in] _message The message of the user.
  * @return A logger (which might be different  */
 template< QDIILOG_TEMPLATE_DECL Level, typename UserMessage>
-Logger<Level> operator<<( Logger<Level> & _logger, const UserMessage & _message )
+Logger<Level> operator<<( const Logger<Level> & _logger, const UserMessage & _message )
 {
-    return std::move( _logger ) << _message;
-}
-
-// -------------------------------------------------------------------------- //
-
-/**@brief Stream out an user message
- * @param[in] _logger The logger which will take care of the user message
- * @param[in] _message The message of the user.
- * @return A logger (which might be different  */
-template< QDIILOG_TEMPLATE_DECL Level, typename UserMessage>
-Logger<Level> operator<<( Logger<Level> && _logger, const UserMessage & _message )
-{
+    Logger<Level> & logger = const_cast< Logger<Level> & >(_logger);
     // if this function is called, then a new copy of this _logger will be created
     // and will be in charge of appending the message.
-    _logger.dontPostpend();
+    logger.dontPostpend();
 
-    if( !_logger.isMuted() )
+    if( !logger.isMuted() )
     {
         std::ostringstream istr;
         istr << _message;
-        return _logger.treat( istr.str() );
+        return logger.treat( istr.str() );
     }
 
-    return _logger;
+    return logger;
 }
 
 // -------------------------------------------------------------------------- //
@@ -701,7 +690,7 @@ Logger<Level> operator<<( Logger<Level> && _logger, const UserMessage & _message
 template< QDIILOG_TEMPLATE_DECL Level >
 void Logger<Level>::setAllOutputs( std::ostream & _newOutput )
 {
-    const auto end = m_allLoggers->end();
+    const typename std::vector<Logger *>::iterator end = m_allLoggers->end();
 
     for( typename std::vector<Logger *>::iterator logger = m_allLoggers->begin();
             logger != end; ++logger )
@@ -716,7 +705,7 @@ void Logger<Level>::setAllOutputs( std::ostream & _newOutput )
 template< QDIILOG_TEMPLATE_DECL Level >
 void Logger<Level>::prependAll( const std::string & _text )
 {
-    const auto end = m_allLoggers->end();
+    const typename std::vector<Logger *>::iterator end = m_allLoggers->end();
 
     for( typename std::vector<Logger *>::iterator logger = m_allLoggers->begin();
             logger != end; ++logger )
@@ -731,7 +720,7 @@ void Logger<Level>::prependAll( const std::string & _text )
 template< QDIILOG_TEMPLATE_DECL Level >
 void Logger<Level>::appendAll( const std::string & _text )
 {
-    const auto end = m_allLoggers->end();
+    const typename std::vector<Logger *>::iterator end = m_allLoggers->end();
 
     for( typename std::vector<Logger *>::iterator logger = m_allLoggers->begin();
             logger != end; ++logger )
