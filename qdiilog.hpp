@@ -903,7 +903,7 @@ void setPrependedTextQdiiFlavourBashColors()
 QDIILOG_NS_END
 
 #if __GNUC__ >= 4
-#   pragma GCC visibility push(hidden)
+#   pragma GCC visibility pop(hidden)
 #endif
 
 #endif //QDILOG_2_2_1
