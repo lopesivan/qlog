@@ -1,5 +1,5 @@
-#ifndef QDIILOG_2_0
-#define QDIILOG_2_0
+#ifndef QDIILOG_2_1
+#define QDIILOG_2_1
 
 /** @mainpage
  * DESCRIPTION
@@ -342,16 +342,30 @@ struct Logger : public std::ostream
      * This function lets you add a custom text before any message logged.
      * For instance, if you want all warning messages to be preceded by
      * <c>WARNING: </c>, you could call
-     * @code{.cpp}log_warning.setPrependText("WARNING: "); @endcode
+     * @code{.cpp}log_warning.prepend("WARNING: "); @endcode
      * This way, whenever you’ll type a warning message, it will be preceded
      * by your text. For instance,
      * @code{.cpp}log_warning << "something odd happened\n"; @endcode
      * will write <c>WARNING: something odd happened</c>
      * @brief Adds a custom text before the message to log.
-     * @param[in] _text The text to add before the log message.
-     * @warning Calling setPrependText many times cancels any previously
+     * @warning Calling prepend many times cancels any previously
      *          set text. */
     void prepend( const std::string & _text );
+
+    /**@brief Append all the user messages with some text.
+     * @param[in] _text The text to add after the log message.
+     *
+     * This function lets you add a custom text after every logges message.
+     * For instance, if you want all warning messages to end up with '\n', use:
+     * @code{.cpp}log_warning.append("\n"); @endcode
+     * This way, whenever you’ll type a warning message, it will be terminated
+     * by a newline character.
+     * @code{.cpp}log_warning << "something odd happened"; @endcode
+     * will write something odd happened, and return caret.
+     * @brief Adds a custom text after the message to log.
+     * @warning Calling append many times cancels any previously
+     *          set text. */
+    void append( const std::string & _text );
 
     /**@brief Changes the output of the logger
      * @param[in] _newOutput The output that will replace the former one
@@ -393,6 +407,13 @@ struct Logger : public std::ostream
      */
     bool isGranularityOk() const;
 
+
+    /**@brief Turns off postpending
+     * @private
+     * This is used internally so that an expression like
+     * log_debug << "something " << "happened"; does not prepend both messages */
+    void dontPostpend() { m_shouldPostpend = false; }
+
 public:
     /**@brief Changes the output of all the loggers of this level
      * @private */
@@ -403,15 +424,21 @@ public:
      * @private */
     static void prependAll( const std::string & _text );
 
+    /**@brief Prepends the same text to all loggers of this level
+     * @param[in] _text The _text to prepend
+     * @private */
+    static void appendAll( const std::string & _text );
 private:
     bool m_isDecorated;
     bool m_isMuted;
+    bool m_shouldPostpend;
 
 private:
     struct Decoration
     {
-        Decoration() : prependText() {}
+        Decoration() : prependText(), postpendText() {}
         std::string prependText;
+        std::string postpendText;
     };
 
     Decoration * m_decoration;
@@ -454,6 +481,7 @@ Logger<Level>::Logger( bool _muted, bool _decorated )
     ,std::basic_ostream<char>( nullptr )
     ,m_isDecorated( _decorated )
     ,m_isMuted( _muted )
+    ,m_shouldPostpend( true )
     ,m_decoration( nullptr )
 {
     registerMe( *this );
@@ -467,6 +495,7 @@ Logger<Level>::Logger( const Logger & _copy )
     ,std::basic_ostream<char>( nullptr )
     ,m_isDecorated( _copy.m_isDecorated )
     ,m_isMuted( _copy.m_isMuted )
+    ,m_shouldPostpend( true )
     ,m_decoration( nullptr )
 {
     setOutput( const_cast<Logger &>( _copy ) );
@@ -515,12 +544,12 @@ Logger<Level> Logger<Level>::treat( const std::string & _userMessage )
     }
 
     Logger returnedLogger( isMuted(), false );
+    if ( m_decoration && m_decoration->postpendText.size() )
+        returnedLogger.append( m_decoration->postpendText );
     returnedLogger.setOutput( *this );
 
     return returnedLogger;
 }
-
-
 
 // -------------------------------------------------------------------------- //
 
@@ -532,6 +561,18 @@ void Logger<Level>::prepend( const std::string & _text )
 
     if( m_decoration )
         m_decoration->prependText = _text;
+}
+
+// -------------------------------------------------------------------------- //
+
+template< QDIILOG_TEMPLATE_DECL Level >
+void Logger<Level>::append( const std::string & _text )
+{
+    if( !m_decoration )
+        m_decoration = new Logger::Decoration();
+
+    if( m_decoration )
+        m_decoration->postpendText = _text;
 }
 
 // -------------------------------------------------------------------------- //
@@ -550,7 +591,10 @@ Logger<Level> & Logger<Level>::operator=( const Logger<Level> & _copy )
         try
         {
             newDecoration->prependText.reserve(
-                _copy.m_decoration->prependText.size()
+                _copy.m_decoration->prependText.size() + 1
+            );
+            newDecoration->postpendText.reserve(
+                _copy.m_decoration->postpendText.size() + 1
             );
         }
         catch( const std::bad_alloc & )
@@ -563,7 +607,10 @@ Logger<Level> & Logger<Level>::operator=( const Logger<Level> & _copy )
     // if we made it to this point, then all memory has been allocated. yippi
     // we can proceed to the copy itself
     if( newDecoration )
+    {
         newDecoration->prependText = _copy.m_decoration->prependText;
+        newDecoration->postpendText = _copy.m_decoration->postpendText;
+    }
 
     m_isDecorated = _copy.m_isDecorated;
     m_isMuted     = _copy.m_isMuted;
@@ -582,6 +629,10 @@ Logger<Level> & Logger<Level>::operator=( const Logger<Level> & _copy )
 template< QDIILOG_TEMPLATE_DECL Level >
 Logger<Level>::~Logger()
 {
+    if ( m_shouldPostpend && m_decoration )
+    {
+        static_cast<std::ostream&>(*this) << m_decoration->postpendText;
+    }
     delete m_decoration;
     unregisterMe( *this );
 }
@@ -630,6 +681,10 @@ Logger<Level> operator<<( Logger<Level> & _logger, const UserMessage & _message 
 template< QDIILOG_TEMPLATE_DECL Level, typename UserMessage>
 Logger<Level> operator<<( Logger<Level> && _logger, const UserMessage & _message )
 {
+    // if this function is called, then a new copy of this _logger will be created
+    // and will be in charge of appending the message.
+    _logger.dontPostpend();
+
     if( !_logger.isMuted() )
     {
         std::ostringstream istr;
@@ -670,6 +725,20 @@ void Logger<Level>::prependAll( const std::string & _text )
     }
 }
 
+// -------------------------------------------------------------------------- //
+
+/**@brief Changes the output of all the loggers of this level */
+template< QDIILOG_TEMPLATE_DECL Level >
+void Logger<Level>::appendAll( const std::string & _text )
+{
+    const auto end = m_allLoggers->end();
+
+    for( typename std::vector<Logger *>::iterator logger = m_allLoggers->begin();
+            logger != end; ++logger )
+    {
+        ( *logger )->append( _text );
+    }
+}
 // -------------------------------------------------------------------------- //
 
 template< QDIILOG_TEMPLATE_DECL Level >
@@ -815,13 +884,21 @@ std::string setBashColor( BashColor _foreground = NONE,
 inline
 void setPrependedTextQdiiFlavourBashColors()
 {
+    // append custom text
     QDIILOG_NAME_LOGGER_DEBUG   .prependAll( setBashColor( NONE, NONE, false ) );
     QDIILOG_NAME_LOGGER_TRACE   .prependAll( setBashColor( NONE, NONE, false ) );
     QDIILOG_NAME_LOGGER_INFO    .prependAll( setBashColor( NONE, NONE, false ) + "[..] " );
     QDIILOG_NAME_LOGGER_WARNING .prependAll( std::string( "[" ) + setBashColor( GREEN ) + "ww" + setBashColor( NONE ) + "] " );
     QDIILOG_NAME_LOGGER_ERROR   .prependAll( std::string( "[" ) + setBashColor( RED ) + "EE" + setBashColor( NONE ) + "]" + setBashColor( NONE, NONE, true ) + " " );
+
+    // prepend messages to prevent other loggers from getting stained by the colors
+    QDIILOG_NAME_LOGGER_DEBUG   .appendAll( setBashColor( NONE, NONE, false ) );
+    QDIILOG_NAME_LOGGER_TRACE   .appendAll( setBashColor( NONE, NONE, false ) );
+    QDIILOG_NAME_LOGGER_INFO    .appendAll( setBashColor( NONE, NONE, false ) );
+    QDIILOG_NAME_LOGGER_WARNING .appendAll( setBashColor( NONE, NONE, false ) );
+    QDIILOG_NAME_LOGGER_ERROR   .appendAll( setBashColor( NONE, NONE, false ) );
 }
 
 QDIILOG_NS_END
 
-#endif //QDILOG_2_0
+#endif //QDILOG_2_1
