@@ -1,5 +1,5 @@
-#ifndef QDIILOG_2_1
-#define QDIILOG_2_1
+#ifndef QDIILOG_2_2_1
+#define QDIILOG_2_2_1
 
 /** @mainpage
  * DESCRIPTION
@@ -184,6 +184,11 @@
 #   define QDIILOG_NO_SCOPED_ENUMS
 #endif
 
+// hide symbols on linux
+#if __GNUC__ >= 4
+#   pragma GCC visibility push(hidden)
+#endif
+
 // let the user defines his object names
 #ifndef QDIILOG_NAME_LOGGER_DEBUG
 #   define QDIILOG_NAME_LOGGER_DEBUG log_debug
@@ -296,11 +301,12 @@ struct Logger : public std::ostream
      * @private
      * @param[in] _muted Forbids the logger from outputting anything
      * @param[in] _decorated Whether the logger can decorate user messages
+     * @param[in] _shouldAppend Should the logger append user trailing message
      * @warning There no reason why you would want to create a logger,
      *          you should use already existing objects: log_debug,
      *          log_trace, log_info, log_warning, log_error
      */
-    explicit Logger( bool _muted = false, bool _decorated = true );
+    explicit Logger( bool _muted = false, bool _decorated = true, bool _shouldAppend = false );
 
     /**@brief Construct a copy of a Logger
      * @param[in] _copy The other Logger you want to construct from
@@ -479,12 +485,12 @@ private:
 // -------------------------------------------------------------------------- //
 
 template< QDIILOG_TEMPLATE_DECL Level >
-Logger<Level>::Logger( bool _muted, bool _decorated )
+Logger<Level>::Logger( bool _muted, bool _decorated, bool _shouldAppend )
     :std::basic_ios<char>()
     ,std::basic_ostream<char>( nullptr )
     ,m_isDecorated( _decorated )
     ,m_isMuted( _muted )
-    ,m_shouldPostpend( true )
+    ,m_shouldPostpend( _shouldAppend )
     ,m_decoration( nullptr )
 {
     registerMe( *this );
@@ -499,10 +505,9 @@ Logger<Level>::Logger( const Logger & _copy )
     ,m_isDecorated( _copy.m_isDecorated )
     ,m_isMuted( _copy.m_isMuted )
     ,m_shouldPostpend( true )
-    ,m_decoration( nullptr )
+    ,m_decoration( _copy.m_decoration ? new Decoration( *_copy.m_decoration) : nullptr )
 {
     setOutput( const_cast<Logger &>( _copy ) );
-
     registerMe( *this );
 }
 
@@ -546,7 +551,7 @@ Logger<Level> Logger<Level>::treat( const std::string & _userMessage )
         static_cast<std::ostream &>( *this ) << fullMessage;
     }
 
-    Logger returnedLogger( isMuted(), false );
+    Logger returnedLogger( isMuted(), false, true );
     if ( m_decoration && m_decoration->postpendText.size() )
         returnedLogger.append( m_decoration->postpendText );
     returnedLogger.setOutput( *this );
@@ -632,7 +637,7 @@ Logger<Level> & Logger<Level>::operator=( const Logger<Level> & _copy )
 template< QDIILOG_TEMPLATE_DECL Level >
 Logger<Level>::~Logger()
 {
-    if ( m_shouldPostpend && m_decoration )
+    if ( m_shouldPostpend && m_decoration && m_decoration->postpendText.size() )
     {
         static_cast<std::ostream&>(*this) << m_decoration->postpendText;
     }
@@ -652,6 +657,7 @@ template< QDIILOG_TEMPLATE_DECL Level >
 Logger<Level> operator<<( const Logger<Level> & _logger, StandardEndLine _endl )
 {
     Logger<Level> & logger = const_cast< Logger<Level> & >(_logger);
+    logger.dontPostpend();
     if( !logger.isMuted() && logger.isGranularityOk() )
     {
         _endl( logger );
@@ -824,6 +830,12 @@ void setPrependTextQdiiFlavour()
     QDIILOG_NAME_LOGGER_INFO    .prependAll( "[..] " );
     QDIILOG_NAME_LOGGER_WARNING .prependAll( "[ww] " );
     QDIILOG_NAME_LOGGER_ERROR   .prependAll( "[EE] " );
+
+    QDIILOG_NAME_LOGGER_DEBUG   .appendAll( "" );
+    QDIILOG_NAME_LOGGER_TRACE   .appendAll( "" );
+    QDIILOG_NAME_LOGGER_INFO    .appendAll( "" );
+    QDIILOG_NAME_LOGGER_WARNING .appendAll( "" );
+    QDIILOG_NAME_LOGGER_ERROR   .appendAll( "" );
 }
 
 // -------------------------------------------------------------------------- //
@@ -890,4 +902,8 @@ void setPrependedTextQdiiFlavourBashColors()
 
 QDIILOG_NS_END
 
-#endif //QDILOG_2_1
+#if __GNUC__ >= 4
+#   pragma GCC visibility push(hidden)
+#endif
+
+#endif //QDILOG_2_2_1
