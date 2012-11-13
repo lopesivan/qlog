@@ -354,6 +354,35 @@ TEST( PrependEndl )
     CHECK_EQUAL( "a\n", output.str() );
 }
 
+TEST( Colors )
+{
+    std::cout << "Colors" << std::endl;
+	qlog::init();
+
+    // setting every output to our test stream
+    logger<loglevel::error> logger;
+    std::ostringstream output;
+    logger.set_output( std::cout );
+	logger << color() << "This line should not have special colors\n";
+    logger << color(green) << "This line should be green on black\n";
+	logger << color(red) << "This line should be red on black\n";
+	logger << color(blue) << "This line should be blue on black\n";
+	logger << color(green, true) << "This line should be bold green on black\n";
+	logger << color(yellow) << "This line should be yellow on black\n";
+	logger << color(yellow, true) << "This line should be bold yellow on black\n";
+	logger << color(red, true) << "This line should be bold red on black\n";
+	logger << color(blue, true) << "This line should be bold blue on black\n";
+	logger << color(green, red) << "This line should be green on red\n" << color();
+	logger << color(blue, red) << "This line should be blue on red\n" << color();
+	logger << color(red, green) << "This line should be red on green\n" << color();
+	logger << color(red, blue) << "This line should be red on blue\n" << color();
+	logger << "This " << color(blue, red) << "word" << color() << " should be blue on red\n";
+	logger << "This " << color(green, blue, true) << "word" << color() << " should be bold green on blue\n";
+
+	qlog::destroy();
+}
+
+
 int main( int , char ** )
 {
     return UnitTest::RunAllTests();

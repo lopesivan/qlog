@@ -5,6 +5,11 @@
 #include <vector>
 #include <assert.h>
 
+// windows color support
+#ifdef WIN32
+#	include <windows.h>
+#endif
+
 // let the user defines his own namespace
 #ifndef QLOG_NAMESPACE
 #   define QLOG_NAMESPACE qlog
@@ -26,6 +31,22 @@ static const unsigned warning = 4;
 static const unsigned error = 5;
 }
 
+#ifdef WIN32
+void *get_console_function(char *name) {
+   static HMODULE kernel32=(HMODULE)0xffffffff;
+   if(kernel32==0)
+      return NULL;
+   if(kernel32==(HMODULE)0xffffffff) {
+      kernel32=LoadLibraryA("kernel32.dll");
+      if(kernel32==0)
+         return 0;
+   }
+   return GetProcAddress(kernel32,name);
+}
+
+typedef BOOL (WINAPI *console_function)(HANDLE hConsoleOutput, WORD attr);
+#endif
+
 // -------------------------------------------------------------------------- //
 // hack to catch std::endl;
 typedef std::basic_ostream<char, std::char_traits<char> > cout_type;
@@ -36,22 +57,72 @@ template<typename T>
 struct user_global_settings
 {
     static unsigned loglevel;
+	static bool initialized;
+
+#ifdef WIN32
+	static HANDLE console_handle;
+	static console_function set_text_attribute;
+#endif
 };
 
 // -------------------------------------------------------------------------- //
 template<>
 unsigned user_global_settings<int>::loglevel = loglevel::error;
 
+template<>
+bool user_global_settings<int>::initialized = false;
+
+#ifdef WIN32
+template<>
+HANDLE user_global_settings<int>::console_handle = INVALID_HANDLE_VALUE;
+
+template<>
+console_function user_global_settings<int>::set_text_attribute = 0;
+#endif
+
+typedef user_global_settings<int> settings;
+
 static
 void set_loglevel( unsigned level )
 {
-    user_global_settings<int>::loglevel = level;
+    settings::loglevel = level;
 }
 
 static
 unsigned get_loglevel()
 {
-    return user_global_settings<int>::loglevel;
+    return settings::loglevel;
+}
+
+// -------------------------------------------------------------------------- //
+inline
+void init()
+{
+	if (!settings::initialized)
+	{
+#		ifdef WIN32
+		settings::console_handle = GetStdHandle(STD_OUTPUT_HANDLE);
+		settings::set_text_attribute = static_cast<console_function>(get_console_function("SetConsoleTextAttribute"));
+#		endif
+
+		settings::initialized = true;
+	}
+}
+
+// -------------------------------------------------------------------------- //
+inline
+void destroy()
+{
+	if (settings::initialized)
+	{
+		
+#		ifdef WIN32
+		settings::console_handle = 0;
+		settings::set_text_attribute = 0;
+#		endif
+
+		settings::initialized = false;
+	}
 }
 
 // -------------------------------------------------------------------------- //
@@ -320,8 +391,6 @@ void set_output( std::ostream & _new_output )
 
 // -------------------------------------------------------------------------- //
 
-namespace bash
-{
 static const unsigned black = 1;
 static const unsigned red = 2;
 static const unsigned green = 3;
@@ -330,7 +399,9 @@ static const unsigned blue = 5;
 static const unsigned magenta = 6;
 static const unsigned cyan = 7;
 static const unsigned white = 8;
+static const unsigned gray = 9;
 
+#ifndef WIN32
 struct color
 {
     color()
@@ -357,8 +428,7 @@ struct color
         case cyan: m_foreground = "\033[36m"; break;
         case white: m_foreground = "\033[37m"; break;
         }
-    }
-
+    } 
 
     color( unsigned _foreground, unsigned _background, bool _bold = false )
         :m_foreground("")
@@ -400,19 +470,104 @@ private:
     const char * m_background;
 };
 
-} // namespace bash
-
 template<unsigned level>
-receiver<level> operator <<( const logger<level> & _logger, const bash::color & _color )
+receiver<level> operator <<( const logger<level> & _logger, const color & _color )
 {
     return _logger << _color.getBold() << _color.getForeground() << _color.getBackground();
 }
 
 template<unsigned level>
-receiver<level> operator <<( const receiver<level> & _recv, const bash::color & _color )
+receiver<level> operator <<( const receiver<level> & _recv, const color & _color )
 {
     return _recv << _color.getBold() << _color.getForeground() << _color.getBackground();
 }
+
+#else // WIN32
+
+struct color
+{
+	color()
+		:m_attributes(0)
+	{
+		setForeground( white, false );
+		setBackground( black );
+	}
+
+	explicit
+	color(unsigned _foreground, bool _bold = false)
+		:m_attributes(0)
+	{
+		setForeground( _foreground, _bold );
+	}
+
+	color(unsigned _foreground, unsigned _background, bool _bold = false)
+		:m_attributes(0)
+	{
+		setForeground( _foreground, _bold );
+		setBackground( _background );
+	}
+
+	WORD getAttributes() const { return m_attributes; }
+
+private:
+	void setForeground(unsigned _color, bool _bold)
+	{
+		switch( _color )
+		{
+		case black: m_attributes = 0; break;
+		case blue:	m_attributes = FOREGROUND_BLUE; break;
+		case green: m_attributes = FOREGROUND_GREEN; break;
+		case red:	m_attributes = FOREGROUND_RED; break;
+		case yellow: m_attributes = FOREGROUND_GREEN | FOREGROUND_RED; break;
+		case gray: m_attributes = FOREGROUND_INTENSITY; break;
+		case magenta: m_attributes = FOREGROUND_BLUE | FOREGROUND_RED; break;
+
+		default: 
+		case white: m_attributes = FOREGROUND_BLUE | FOREGROUND_RED | FOREGROUND_GREEN; break;
+		}
+		if (_bold) 
+			m_attributes |= FOREGROUND_INTENSITY;
+	}
+
+	void setBackground(unsigned _color)
+	{
+		WORD bgAttributes = 0;
+		switch(_color)
+		{
+		case white: bgAttributes |= BACKGROUND_BLUE | BACKGROUND_RED | BACKGROUND_GREEN;
+		case blue:	bgAttributes |= BACKGROUND_BLUE; break;
+		case red:	bgAttributes |= BACKGROUND_RED; break;
+		case green: bgAttributes |= BACKGROUND_GREEN; break;
+		case gray:	bgAttributes |= BACKGROUND_INTENSITY; break;
+		case yellow: bgAttributes |= BACKGROUND_GREEN | BACKGROUND_RED; break;
+		case magenta: bgAttributes |= BACKGROUND_BLUE | BACKGROUND_RED; break;
+
+		default:
+		case black: bgAttributes |= 0; break;
+		}
+
+		m_attributes |= bgAttributes;
+	}
+	WORD m_attributes;
+};
+
+template<unsigned level>
+receiver<level> operator <<( const logger<level> & _logger, const color & _color )
+{
+	assert(settings::set_text_attribute && settings::console_handle);
+	settings::set_text_attribute( settings::console_handle, _color.getAttributes() );
+	return receiver<level>( &_logger );
+}
+
+template<unsigned level>
+receiver<level> operator <<( const receiver<level> & _recv, const color & _color )
+{
+    assert(settings::set_text_attribute && settings::console_handle);
+	settings::set_text_attribute( settings::console_handle, _color.getAttributes() );
+	return _recv;
+}
+
+#endif 
 
 } // namespace
 #endif // QLOG_HPP
