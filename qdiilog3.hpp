@@ -15,6 +15,11 @@
 #   define QLOG_NAMESPACE qlog
 #endif
 
+// hide symbols on linux
+#if __GNUC__ >= 4
+#   pragma GCC visibility push(hidden)
+#endif
+
 namespace QLOG_NAMESPACE
 {
 // -------------------------------------------------------------------------- //
@@ -632,4 +637,9 @@ receiver<level> operator <<( const receiver<level> & _recv, const blink & )
 #endif
 
 } // namespace
+
+#if __GNUC__ >= 4
+#   pragma GCC visibility pop
+#endif
+
 #endif // QLOG_HPP
