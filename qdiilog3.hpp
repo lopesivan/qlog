@@ -121,10 +121,13 @@ struct logger
             ( *m_output ) << m_append;
     }
 
-    void signal( standard_endline _func ) const
+    void signal( standard_endline _func, bool first_message = false ) const
     {
         if( can_log() )
         {
+            if (first_message && m_prepend)
+                ( *m_output ) << m_prepend;
+
             _func( *m_output );
         }
     }
@@ -270,6 +273,14 @@ receiver<level> operator<<( const receiver<level> & _recv, standard_endline _fun
     _recv.signal( _func );
     return _recv;
 }
+// -------------------------------------------------------------------------- //
+template< unsigned level >
+receiver<level> operator<<( const logger<level> & _logger, standard_endline _func )
+{
+    _logger.signal( _func, true );
+    return receiver<level>( &_logger );
+}
+
 // -------------------------------------------------------------------------- //
 
 #ifndef QDIILOG_NAME_LOGGER_DEBUG

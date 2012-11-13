@@ -285,6 +285,75 @@ TEST( AppendTwoStringsAndEndl  )
     CHECK_EQUAL( "12\na2b345", output.str() );
 }
 
+TEST( AppendEndl )
+{
+    std::cout << "AppendEndl" << std::endl;
+    // setting every output to our test stream
+    // setting every output to our test stream
+    logger<loglevel::error> logger;
+    std::ostringstream output;
+    logger.set_output( output );
+    logger.append("a");
+
+    logger << std::endl;
+
+    CHECK_EQUAL( "\na", output.str() );
+}
+
+TEST( PrependOneString )
+{
+    std::cout << "PrependOneString" << std::endl;
+    // setting every output to our test stream
+    logger<loglevel::error> logger;
+    std::ostringstream output;
+    logger.set_output( output );
+    logger.prepend("a");
+
+    logger << "1";
+
+    CHECK_EQUAL( "a1", output.str() );
+}
+
+TEST( PrependTwoStrings )
+{
+    std::cout << "PrependTwoStrings" << std::endl;
+    // setting every output to our test stream
+    logger<loglevel::error> logger;
+    std::ostringstream output;
+    logger.set_output( output );
+    logger.prepend("a");
+
+    logger << "1" << "2";
+
+    CHECK_EQUAL( "a12", output.str() );
+}
+TEST( PrependTwoStringsAndEndl )
+{
+    std::cout << "PrependTwoStringsAndEndl" << std::endl;
+    // setting every output to our test stream
+    logger<loglevel::error> logger;
+    std::ostringstream output;
+    logger.set_output( output );
+    logger.prepend("a");
+
+    logger << "1" << "2" << std::endl;
+
+    CHECK_EQUAL( "a12\n", output.str() );
+}
+
+TEST( PrependEndl )
+{
+    std::cout << "PrependOneString" << std::endl;
+    // setting every output to our test stream
+    logger<loglevel::error> logger;
+    std::ostringstream output;
+    logger.set_output( output );
+    logger.prepend("a");
+
+    logger << std::endl;
+
+    CHECK_EQUAL( "a\n", output.str() );
+}
 int main( int , char ** )
 {
     return UnitTest::RunAllTests();
