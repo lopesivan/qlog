@@ -69,7 +69,6 @@ TEST( Numbers )
     logger.set_output( output );
     logger << 1L << 2 << 3UL;
 
-
     CHECK_EQUAL( "123", output.str() );
 }
 
@@ -243,6 +242,8 @@ TEST( AppendOneString )
     qlog::error << "5";
 
     CHECK_EQUAL( "1a2345", output.str() );
+
+    qlog::debug.append("");
 }
 
 TEST( AppendTwoStrings )
@@ -262,6 +263,8 @@ TEST( AppendTwoStrings )
     qlog::error << "5";
 
     CHECK_EQUAL( "12a2345", output.str() );
+
+    qlog::debug.append("");
 }
 
 TEST( AppendTwoStringsAndEndl  )
@@ -283,6 +286,9 @@ TEST( AppendTwoStringsAndEndl  )
     qlog::error << "5";
 
     CHECK_EQUAL( "12\na2b345", output.str() );
+
+    qlog::debug.append("");
+    qlog::trace.append("");
 }
 
 TEST( AppendEndl )
@@ -291,7 +297,7 @@ TEST( AppendEndl )
     logger<loglevel::error> logger;
     std::ostringstream output;
     logger.set_output( output );
-    logger.append("a");
+    logger.change_append("a");
 
     logger << std::endl;
 
@@ -304,7 +310,7 @@ TEST( PrependOneString )
     logger<loglevel::error> logger;
     std::ostringstream output;
     logger.set_output( output );
-    logger.prepend("a");
+    logger.change_prepend("a");
 
     logger << "1";
 
@@ -317,7 +323,7 @@ TEST( PrependTwoStrings )
     logger<loglevel::error> logger;
     std::ostringstream output;
     logger.set_output( output );
-    logger.prepend("a");
+    logger.change_prepend("a");
 
     logger << "1" << "2";
 
@@ -329,7 +335,7 @@ TEST( PrependTwoStringsAndEndl )
     logger<loglevel::error> logger;
     std::ostringstream output;
     logger.set_output( output );
-    logger.prepend("a");
+    logger.change_prepend("a");
 
     logger << "1" << "2" << std::endl;
 
@@ -342,7 +348,7 @@ TEST( PrependEndl )
     logger<loglevel::error> logger;
     std::ostringstream output;
     logger.set_output( output );
-    logger.prepend("a");
+    logger.change_prepend("a");
     logger << std::endl;
 
     CHECK_EQUAL( "a\n", output.str() );
@@ -382,17 +388,17 @@ TEST( ColorAppend )
 {
     std::cout << "ColorAppend" << std::endl;
 	qlog::init();
-  
+
     logger<loglevel::error> logger_without_append;
 	logger<loglevel::error> logger_with_append;
-	
+
 	std::ostringstream output_witout_append;
 	std::ostringstream output_with_append;
 
-	logger_with_append.set_output(output_with_append);
-	logger_without_append.set_output(output_witout_append);
+	logger_with_append.change_output(output_with_append);
+	logger_without_append.change_output(output_witout_append);
 
-	logger_with_append.append("z");
+	logger_with_append.change_append("z");
 
 	logger_with_append << "a" << color(green) << "b";
 	logger_without_append << "a" << color(green) << "b";
@@ -410,17 +416,17 @@ TEST( ColorPrepend )
     std::cout << "ColorPrepend" << std::endl;
 	qlog::init();
 
-  
+
     logger<loglevel::error> logger_without_prepend;
 	logger<loglevel::error> logger_with_prepend;
-	
+
 	std::ostringstream output_witout_append;
 	std::ostringstream output_with_append;
 
-	logger_with_prepend.set_output(output_with_append);
-	logger_without_prepend.set_output(output_witout_append);
+	logger_with_prepend.change_output(output_with_append);
+	logger_without_prepend.change_output(output_witout_append);
 
-	logger_with_prepend.prepend("z");
+	logger_with_prepend.change_prepend("z");
 
 	logger_with_prepend << color(green) << "b";
 	logger_without_prepend << "z" << color(green) << "b";
@@ -436,17 +442,17 @@ TEST( BlinkPrepend )
     std::cout << "BlinkPrepend" << std::endl;
 	qlog::init();
 
-  
+
     logger<loglevel::error> logger_without_prepend;
 	logger<loglevel::error> logger_with_prepend;
-	
+
 	std::ostringstream output_witout_append;
 	std::ostringstream output_with_append;
 
-	logger_with_prepend.set_output(output_with_append);
-	logger_without_prepend.set_output(output_witout_append);
+	logger_with_prepend.change_output(output_with_append);
+	logger_without_prepend.change_output(output_witout_append);
 
-	logger_with_prepend.prepend("z");
+	logger_with_prepend.change_prepend("z");
 
 	logger_with_prepend << blink() << "b";
 	logger_without_prepend << "z" << blink() << "b";
@@ -461,17 +467,17 @@ TEST( UnderlinePrepend )
     std::cout << "UnderlinePrepend" << std::endl;
 	qlog::init();
 
-  
+
     logger<loglevel::error> logger_without_prepend;
 	logger<loglevel::error> logger_with_prepend;
-	
+
 	std::ostringstream output_witout_append;
 	std::ostringstream output_with_append;
 
-	logger_with_prepend.set_output(output_with_append);
-	logger_without_prepend.set_output(output_witout_append);
+	logger_with_prepend.change_output(output_with_append);
+	logger_without_prepend.change_output(output_witout_append);
 
-	logger_with_prepend.prepend("z");
+	logger_with_prepend.change_prepend("z");
 
 	logger_with_prepend << underline() << "b";
 	logger_without_prepend << "z" << underline() << "b";
@@ -485,17 +491,17 @@ TEST( BlinkAppend )
 {
     std::cout << "BlinkAppend" << std::endl;
 	qlog::init();
-  
+
     logger<loglevel::error> logger_without_append;
 	logger<loglevel::error> logger_with_append;
-	
+
 	std::ostringstream output_witout_append;
 	std::ostringstream output_with_append;
 
-	logger_with_append.set_output(output_with_append);
-	logger_without_append.set_output(output_witout_append);
+	logger_with_append.change_output(output_with_append);
+	logger_without_append.change_output(output_witout_append);
 
-	logger_with_append.append("z");
+	logger_with_append.change_append("z");
 
 	logger_with_append << "a" << blink() << "b";
 	logger_without_append << "a" << blink() << "b";
@@ -512,17 +518,17 @@ TEST( UnderlineAppend )
 {
     std::cout << "UnderlineAppend" << std::endl;
 	qlog::init();
-  
+
     logger<loglevel::error> logger_without_append;
 	logger<loglevel::error> logger_with_append;
-	
+
 	std::ostringstream output_witout_append;
 	std::ostringstream output_with_append;
 
-	logger_with_append.set_output(output_with_append);
-	logger_without_append.set_output(output_witout_append);
+	logger_with_append.change_output(output_with_append);
+	logger_without_append.change_output(output_witout_append);
 
-	logger_with_append.append("z");
+	logger_with_append.change_append("z");
 
 	logger_with_append << "a" << underline() << "b";
 	logger_without_append << "a" << underline() << "b";

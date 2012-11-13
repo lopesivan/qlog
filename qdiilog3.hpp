@@ -507,21 +507,21 @@ struct logger
      */
     void set_output( std::ostream & _output )
     {
-        m_output = &_output;
+        logger<level>::set_all_outputs( _output );
     }
 
     /**@brief Adds a custom text after all logged messages.
      * @param[in] _txt The text to append */
     void append( const char * _txt )
     {
-        m_append = _txt;
+        logger<level>::append_all( _txt );
     }
 
     /**@brief Adds a custom text before all logged messages
      * @param[in] _txt The text to prepend */
     void prepend( const char * _txt )
     {
-        m_prepend = _txt;
+        logger<level>::prepend_all( _txt );
     }
 
     /**@brief Informs the logger that the last message was treated and that custom text can be appended
@@ -574,6 +574,22 @@ private:
     {
         return ( level >= get_loglevel() ) && m_output && !isDisabled();
     }
+
+public:
+    void change_output( std::ostream & _output )
+    {
+        m_output = &_output;
+    }
+    void change_prepend( const char * _txt )
+    {
+        m_prepend = _txt;
+    }
+
+    void change_append( const char * _txt )
+    {
+        m_append = _txt;
+    }
+
     /**@endcond */
 
 private:
@@ -637,7 +653,27 @@ public:
         for( typename std::vector<logger *>::iterator logger = m_loggers->begin();
                 logger != end; ++logger )
         {
-            ( *logger )->set_output( _new_output );
+            ( *logger )->change_output( _new_output );
+        }
+    }
+
+    static void prepend_all( const char * _txt )
+    {
+        const typename std::vector<logger *>::iterator end = m_loggers->end();
+        for( typename std::vector<logger *>::iterator logger = m_loggers->begin();
+                logger != end; ++logger )
+        {
+            ( *logger )->change_prepend( _txt );
+        }
+    }
+
+    static void append_all( const char * _txt )
+    {
+        const typename std::vector<logger *>::iterator end = m_loggers->end();
+        for( typename std::vector<logger *>::iterator logger = m_loggers->begin();
+                logger != end; ++logger )
+        {
+            ( *logger )->change_append( _txt );
         }
     }
     /** @endcond */
