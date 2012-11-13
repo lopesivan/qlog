@@ -192,6 +192,7 @@ TEST( MultipleWritingToSingleOutput )
 
 TEST( WritingToAFile )
 {
+    std::cout << "WritingToAFile" << std::endl;
     const std::string filename("tmptestfile");
     std::remove(filename.c_str());
 
@@ -224,6 +225,66 @@ TEST( WritingToAFile )
         std::remove(filename.c_str());
     }
 }
+
+TEST( AppendOneString )
+{
+    std::cout << "AppendOneString" << std::endl;
+    // setting every output to our test stream
+    std::ostringstream output;
+    set_output( output );
+
+    set_loglevel( loglevel::debug );
+    qlog::debug.append("a");
+
+    qlog::debug << "1";
+    qlog::trace << "2";
+    qlog::info << "3";
+    qlog::warning << "4";
+    qlog::error << "5";
+
+    CHECK_EQUAL( "1a2345", output.str() );
+}
+
+TEST( AppendTwoStrings )
+{
+    std::cout << "AppendTwoStrings" << std::endl;
+    // setting every output to our test stream
+    std::ostringstream output;
+    set_output( output );
+
+    set_loglevel( loglevel::debug );
+    qlog::debug.append("a");
+
+    qlog::debug << "1" << "2";
+    qlog::trace << "2";
+    qlog::info << "3";
+    qlog::warning << "4";
+    qlog::error << "5";
+
+    CHECK_EQUAL( "12a2345", output.str() );
+}
+
+TEST( AppendTwoStringsAndEndl  )
+{
+    std::cout << "AppendTwoStringsAndEndl" << std::endl;
+
+    // setting every output to our test stream
+    std::ostringstream output;
+    set_output( output );
+
+    set_loglevel( loglevel::debug );
+    qlog::debug.append("a");
+    qlog::trace.append("b");
+
+    qlog::debug << "1" << "2" << std::endl;
+    qlog::trace << "2";
+    qlog::info << "3";
+    qlog::warning << "4";
+    qlog::error << "5";
+
+    CHECK_EQUAL( "12\na2b345", output.str() );
+}
+
 int main( int , char ** )
 {
     return UnitTest::RunAllTests();

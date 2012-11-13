@@ -221,6 +221,8 @@ struct receiver
     bool is_muted() const { return m_muted; }
     void signal( standard_endline _func ) const
     {
+        m_treated = true;
+
         if( !is_muted() )
         {
             m_logger->signal( _func );
