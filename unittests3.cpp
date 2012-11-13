@@ -54,8 +54,8 @@ TEST( ConditionalLogging )
     logger<loglevel::error> logger;
     std::ostringstream output;
     logger.setOutput( output );
-    logger(true) << "a b c";
-    logger(false) << "1 2 3";
+    logger( true ) << "a b c";
+    logger( false ) << "1 2 3";
 
     CHECK_EQUAL( "a b c", output.str() );
 }
@@ -70,6 +70,100 @@ TEST( Numbers )
 
 
     CHECK_EQUAL( "123", output.str() );
+}
+
+TEST( Loglevel )
+{
+    std::cout << "Loglevel" << std::endl;
+    set_loglevel( loglevel::info );
+
+    {
+        logger<loglevel::error> logger;
+        std::ostringstream output;
+        logger.setOutput( output );
+        logger << "a";
+
+        CHECK_EQUAL( "a", output.str() );
+    }
+    {
+        logger<loglevel::warning> logger;
+        std::ostringstream output;
+        logger.setOutput( output );
+        logger << "b";
+
+        CHECK_EQUAL( "b", output.str() );
+    }
+    {
+        logger<loglevel::info> logger;
+        std::ostringstream output;
+        logger.setOutput( output );
+        logger << "b";
+
+        CHECK_EQUAL( "b", output.str() );
+    }
+    {
+        logger<loglevel::trace> logger;
+        std::ostringstream output;
+        logger.setOutput( output );
+        logger << "c";
+
+        CHECK_EQUAL( "", output.str() );
+    }
+    {
+        logger<loglevel::debug> logger;
+        std::ostringstream output;
+        logger.setOutput( output );
+        logger << "c";
+
+        CHECK_EQUAL( "", output.str() );
+    }
+}
+
+TEST( LoglevelWithStdEndl )
+{
+    std::cout << "LoglevelWithStdEndl" << std::endl;
+    set_loglevel( loglevel::info );
+
+    {
+        logger<loglevel::error> logger;
+        std::ostringstream output;
+        logger.setOutput( output );
+        logger << "a" << std::endl;
+
+        CHECK_EQUAL( "a\n", output.str() );
+    }
+    {
+        logger<loglevel::warning> logger;
+        std::ostringstream output;
+        logger.setOutput( output );
+        logger << "a" << std::endl;
+
+        CHECK_EQUAL( "a\n", output.str() );
+    }
+    {
+        logger<loglevel::info> logger;
+        std::ostringstream output;
+        logger.setOutput( output );
+        logger << "a" << std::endl;
+
+        CHECK_EQUAL( "a\n", output.str() );
+    }
+    {
+        logger<loglevel::trace> logger;
+        std::ostringstream output;
+        logger.setOutput( output );
+        logger << "a" << std::endl;
+
+        CHECK_EQUAL( "", output.str() );
+    }
+    {
+        logger<loglevel::debug> logger;
+        std::ostringstream output;
+        logger.setOutput( output );
+        logger << "a" << std::endl;
+
+        CHECK_EQUAL( "", output.str() );
+    }
 }
 
 int main( int , char ** )

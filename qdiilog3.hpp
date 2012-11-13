@@ -25,9 +25,33 @@ static const unsigned warning = 4;
 static const unsigned error = 5;
 }
 
+// -------------------------------------------------------------------------- //
 // hack to catch std::endl;
 typedef std::basic_ostream<char, std::char_traits<char> > cout_type;
 typedef cout_type & ( *standard_endline )( cout_type & );
+
+// -------------------------------------------------------------------------- //
+template<typename T>
+struct user_global_settings
+{
+    static unsigned loglevel;
+};
+
+// -------------------------------------------------------------------------- //
+template<>
+unsigned user_global_settings<int>::loglevel = loglevel::error;
+
+static
+void set_loglevel( unsigned level )
+{
+    user_global_settings<int>::loglevel = level;
+}
+
+static
+unsigned get_loglevel()
+{
+    return user_global_settings<int>::loglevel;
+}
 
 // -------------------------------------------------------------------------- //
 /**@struct logger
@@ -55,7 +79,7 @@ struct logger
     template< typename T >
     void treat( const T & _message, bool _firstPart ) const
     {
-        if( !m_disabled && m_output )
+        if( can_log() )
         {
             if( _firstPart && m_prepend )
                 ( *m_output ) << m_prepend;
@@ -81,13 +105,13 @@ struct logger
 
     void signal_end() const
     {
-        if( !m_disabled && m_prepend )
+        if( can_log() )
             ( *m_output ) << m_prepend;
     }
 
     void signal( standard_endline _func ) const
     {
-        if( !m_disabled && m_output )
+        if( can_log() )
         {
             _func( *m_output );
         }
@@ -105,6 +129,12 @@ private:
     mutable std::ostream * m_output;
     const char * m_prepend;
     const char * m_append;
+
+private:
+    bool can_log() const
+    {
+        return ( level >= get_loglevel() ) && m_output && !m_disabled;
+    }
 };
 
 // -------------------------------------------------------------------------- //
