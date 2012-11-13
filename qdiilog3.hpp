@@ -2,7 +2,8 @@
 #define QLOG_HPP
 
 #include <ostream>
-#include <string>
+#include <vector>
+#include <assert.h>
 
 // let the user defines his own namespace
 #ifndef QLOG_NAMESPACE
@@ -65,30 +66,41 @@ struct logger
         ,m_output( 0 )
         ,m_prepend( 0 )
         ,m_append( 0 )
-    {}
+    {
+        register_me( *this );
+    }
 
     logger( const logger & _logger )
         :m_disabled( _logger.m_disabled )
         ,m_output( _logger.m_output )
         ,m_prepend( _logger.m_prepend )
         ,m_append( _logger.m_append )
-    {}
+    {
+        register_me( *this );
+    }
+
+    ~logger()
+    {
+        unregister_me( *this );
+    }
+
+    logger& operator=(const logger&);
 
     bool isDisabled() const { return m_disabled; }
 
     template< typename T >
-    void treat( const T & _message, bool _firstPart ) const
+    void treat( const T & _message, bool _first_part ) const
     {
         if( can_log() )
         {
-            if( _firstPart && m_prepend )
+            if( _first_part && m_prepend )
                 ( *m_output ) << m_prepend;
 
             ( *m_output ) << _message;
         }
     }
 
-    void setOutput( std::ostream & _output )
+    void set_output( std::ostream & _output )
     {
         m_output = &_output;
     }
@@ -105,8 +117,8 @@ struct logger
 
     void signal_end() const
     {
-        if( can_log() )
-            ( *m_output ) << m_prepend;
+        if( can_log() && m_append )
+            ( *m_output ) << m_append;
     }
 
     void signal( standard_endline _func ) const
@@ -133,9 +145,55 @@ private:
 private:
     bool can_log() const
     {
-        return ( level >= get_loglevel() ) && m_output && !m_disabled;
+        return ( level >= get_loglevel() ) && m_output && !isDisabled();
     }
+
+private:
+    // this vectors permits to act on loggers of the same level belonging
+    // to different compile units.
+    static std::vector<logger*> * m_loggers;
+    static void register_me( logger & _logger )
+    {
+        if( !m_loggers )
+            m_loggers = new std::vector<logger *>();
+
+        m_loggers->push_back( &_logger );
+    }
+
+    static void unregister_me( logger & _logger )
+    {
+        typename std::vector<logger*>::iterator it = m_loggers->begin();
+        const typename std::vector<logger*>::iterator end = m_loggers->end();
+        for (; it != end;++it)
+        {
+            if (*it == &_logger)
+                break;
+        }
+        assert( it != end );
+        m_loggers->erase( it );
+
+        if( m_loggers->empty() )
+        {
+            delete m_loggers;
+            m_loggers = 0;
+        }
+    }
+
+public:
+    static void set_all_outputs( std::ostream & _new_output )
+    {
+        const typename std::vector<logger *>::iterator end = m_loggers->end();
+        for( typename std::vector<logger *>::iterator logger = m_loggers->begin();
+                logger != end; ++logger )
+        {
+            ( *logger )->set_output( _new_output );
+        }
+    }
+
 };
+// -------------------------------------------------------------------------- //
+template< unsigned level >
+std::vector<logger<level> *> * logger<level>::m_loggers;
 
 // -------------------------------------------------------------------------- //
 template< unsigned level >
@@ -160,22 +218,22 @@ struct receiver
             m_logger->signal_end();
     }
 
-    bool isMuted() const { return m_muted; }
+    bool is_muted() const { return m_muted; }
     void signal( standard_endline _func ) const
     {
-        if( !isMuted() )
+        if( !is_muted() )
         {
             m_logger->signal( _func );
         }
     }
 
     template< typename T >
-    receiver treat( const T & _message, bool _firstPart ) const
+    receiver treat( const T & _message, bool _first_part ) const
     {
         m_treated = true;
 
         if( !m_muted )
-            m_logger->treat( _message, _firstPart );
+            m_logger->treat( _message, _first_part );
 
         return *this;
     }
@@ -210,6 +268,40 @@ receiver<level> operator<<( const receiver<level> & _recv, standard_endline _fun
     _recv.signal( _func );
     return _recv;
 }
+// -------------------------------------------------------------------------- //
+
+#ifndef QDIILOG_NAME_LOGGER_DEBUG
+#   define QDIILOG_NAME_LOGGER_DEBUG debug
+#endif
+#ifndef QDIILOG_NAME_LOGGER_TRACE
+#   define QDIILOG_NAME_LOGGER_TRACE trace
+#endif
+#ifndef QDIILOG_NAME_LOGGER_INFO
+#   define QDIILOG_NAME_LOGGER_INFO info
+#endif
+#ifndef QDIILOG_NAME_LOGGER_WARNING
+#   define QDIILOG_NAME_LOGGER_WARNING warning
+#endif
+#ifndef QDIILOG_NAME_LOGGER_ERROR
+#   define QDIILOG_NAME_LOGGER_ERROR error
+#endif
+
+
+static logger<loglevel::debug> QDIILOG_NAME_LOGGER_DEBUG ;
+static logger<loglevel::trace> QDIILOG_NAME_LOGGER_TRACE ;
+static logger<loglevel::info> QDIILOG_NAME_LOGGER_INFO ;
+static logger<loglevel::warning> QDIILOG_NAME_LOGGER_WARNING ;
+static logger<loglevel::error> QDIILOG_NAME_LOGGER_ERROR ;
+
+inline
+void set_output( std::ostream & _new_output )
+{
+    logger< loglevel::debug>::set_all_outputs( _new_output );
+    logger< loglevel::trace>::set_all_outputs( _new_output );
+    logger< loglevel::info>::set_all_outputs( _new_output );
+    logger< loglevel::warning>::set_all_outputs( _new_output );
+    logger< loglevel::error>::set_all_outputs( _new_output );
+}
 
 } // namespace
-#endif QLOG_HPP
+#endif // QLOG_HPP

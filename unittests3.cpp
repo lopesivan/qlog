@@ -1,6 +1,7 @@
 #include "qdiilog3.hpp"
 #include <UnitTest++.h>
 #include <iostream>
+#include <fstream>
 
 using namespace qlog;
 
@@ -9,7 +10,7 @@ TEST( OneString )
     std::cout << "OneString" << std::endl;
     logger<loglevel::error> logger;
     std::ostringstream output;
-    logger.setOutput( output );
+    logger.set_output( output );
     logger << "a b c";
 
     CHECK_EQUAL( "a b c", output.str() );
@@ -20,7 +21,7 @@ TEST( TwoStrings )
     std::cout << "TwoStrings" << std::endl;
     logger<loglevel::error> logger;
     std::ostringstream output;
-    logger.setOutput( output );
+    logger.set_output( output );
     logger << "a b c " << "1 2 3";
 
     CHECK_EQUAL( "a b c 1 2 3", output.str() );
@@ -31,7 +32,7 @@ TEST( CarriageReturn )
     std::cout << "CarriageReturn" << std::endl;
     logger<loglevel::error> logger;
     std::ostringstream output;
-    logger.setOutput( output );
+    logger.set_output( output );
     logger << "a b c\n1 2 3";
 
     CHECK_EQUAL( "a b c\n1 2 3", output.str() );
@@ -42,7 +43,7 @@ TEST( StdEndl )
     std::cout << "StdEndl" << std::endl;
     logger<loglevel::error> logger;
     std::ostringstream output;
-    logger.setOutput( output );
+    logger.set_output( output );
     logger << "a b c" << std::endl << "1 2 3";
 
     CHECK_EQUAL( "a b c\n1 2 3", output.str() );
@@ -53,7 +54,7 @@ TEST( ConditionalLogging )
     std::cout << "ConditionalLogging" << std::endl;
     logger<loglevel::error> logger;
     std::ostringstream output;
-    logger.setOutput( output );
+    logger.set_output( output );
     logger( true ) << "a b c";
     logger( false ) << "1 2 3";
 
@@ -65,7 +66,7 @@ TEST( Numbers )
     std::cout << "Numbers" << std::endl;
     logger<loglevel::error> logger;
     std::ostringstream output;
-    logger.setOutput( output );
+    logger.set_output( output );
     logger << 1L << 2 << 3UL;
 
 
@@ -80,7 +81,7 @@ TEST( Loglevel )
     {
         logger<loglevel::error> logger;
         std::ostringstream output;
-        logger.setOutput( output );
+        logger.set_output( output );
         logger << "a";
 
         CHECK_EQUAL( "a", output.str() );
@@ -88,7 +89,7 @@ TEST( Loglevel )
     {
         logger<loglevel::warning> logger;
         std::ostringstream output;
-        logger.setOutput( output );
+        logger.set_output( output );
         logger << "b";
 
         CHECK_EQUAL( "b", output.str() );
@@ -96,7 +97,7 @@ TEST( Loglevel )
     {
         logger<loglevel::info> logger;
         std::ostringstream output;
-        logger.setOutput( output );
+        logger.set_output( output );
         logger << "b";
 
         CHECK_EQUAL( "b", output.str() );
@@ -104,7 +105,7 @@ TEST( Loglevel )
     {
         logger<loglevel::trace> logger;
         std::ostringstream output;
-        logger.setOutput( output );
+        logger.set_output( output );
         logger << "c";
 
         CHECK_EQUAL( "", output.str() );
@@ -112,7 +113,7 @@ TEST( Loglevel )
     {
         logger<loglevel::debug> logger;
         std::ostringstream output;
-        logger.setOutput( output );
+        logger.set_output( output );
         logger << "c";
 
         CHECK_EQUAL( "", output.str() );
@@ -127,7 +128,7 @@ TEST( LoglevelWithStdEndl )
     {
         logger<loglevel::error> logger;
         std::ostringstream output;
-        logger.setOutput( output );
+        logger.set_output( output );
         logger << "a" << std::endl;
 
         CHECK_EQUAL( "a\n", output.str() );
@@ -135,7 +136,7 @@ TEST( LoglevelWithStdEndl )
     {
         logger<loglevel::warning> logger;
         std::ostringstream output;
-        logger.setOutput( output );
+        logger.set_output( output );
         logger << "a" << std::endl;
 
         CHECK_EQUAL( "a\n", output.str() );
@@ -143,7 +144,7 @@ TEST( LoglevelWithStdEndl )
     {
         logger<loglevel::info> logger;
         std::ostringstream output;
-        logger.setOutput( output );
+        logger.set_output( output );
         logger << "a" << std::endl;
 
         CHECK_EQUAL( "a\n", output.str() );
@@ -151,7 +152,7 @@ TEST( LoglevelWithStdEndl )
     {
         logger<loglevel::trace> logger;
         std::ostringstream output;
-        logger.setOutput( output );
+        logger.set_output( output );
         logger << "a" << std::endl;
 
         CHECK_EQUAL( "", output.str() );
@@ -159,13 +160,70 @@ TEST( LoglevelWithStdEndl )
     {
         logger<loglevel::debug> logger;
         std::ostringstream output;
-        logger.setOutput( output );
+        logger.set_output( output );
         logger << "a" << std::endl;
 
         CHECK_EQUAL( "", output.str() );
     }
 }
 
+TEST( MultipleWritingToSingleOutput )
+{
+    std::cout << "MultipleWritingToSingleOutput" << std::endl;
+    std::ostringstream output;
+    set_output( output );
+
+    // in error mode, only errors are logged
+    set_loglevel( loglevel::warning );
+
+    qlog::debug( true ) << 1UL;
+    qlog::debug( false ) << 2UL;
+    qlog::trace( true ) << 3UL;
+    qlog::trace( false ) << 4UL;
+    qlog::info( true ) << 5UL;
+    qlog::info( false ) << 6UL;
+    qlog::warning( true ) << 7UL;
+    qlog::warning( false ) << 8UL;
+    qlog::error( true ) << 9UL;
+    qlog::error( false ) << 0UL;
+
+    CHECK_EQUAL(output.str(), "79");
+}
+
+TEST( WritingToAFile )
+{
+    const std::string filename("tmptestfile");
+    std::remove(filename.c_str());
+
+    {
+        std::ofstream outputFile( filename.c_str() );
+        set_output( outputFile );
+
+        // in error mode, only errors are logged
+        set_loglevel( loglevel::warning );
+
+        qlog::debug( true ) << 1UL;
+        qlog::debug( false ) << 2UL;
+        qlog::trace( true ) << 3UL;
+        qlog::trace( false ) << 4UL;
+        qlog::info( true ) << 5UL;
+        qlog::info( false ) << 6UL;
+        qlog::warning( true ) << 7UL;
+        qlog::warning( false ) << 8UL;
+        qlog::error( true ) << 9UL;
+        qlog::error( false ) << 0UL;
+    }
+
+    {
+        std::ifstream inputFile( filename.c_str() );
+        CHECK(inputFile.good());
+        int x;
+        inputFile >> x;
+        CHECK_EQUAL(79,x);
+
+        std::remove(filename.c_str());
+    }
+}
 int main( int , char ** )
 {
     return UnitTest::RunAllTests();
