@@ -76,6 +76,14 @@ struct logger
         }
     }
 
+    void signal_endl() const
+    {
+        if (!m_disabled && m_output)
+        {
+            std::endl(*m_output);
+        }
+    }
+
 private:
     bool m_disabled;
     mutable std::ostream * m_output;
@@ -98,13 +106,21 @@ struct receiver
         :m_treated( false )
         ,m_logger( _copy.m_logger )
         ,m_muted( _copy.m_muted )
-    {
-    }
+    {}
 
     ~receiver()
     {
         if( !m_treated )
             m_logger->signal_end();
+    }
+
+    bool isMuted() const { return m_muted; }
+    void signal_endl() const
+    {
+        if (!isMuted())
+        {
+            m_logger->signal_endl();
+        }
     }
 
     template< typename T >
@@ -117,7 +133,8 @@ struct receiver
 
         return *this;
     }
-    private:
+
+private:
     receiver operator=(const receiver&);
 
 private:
@@ -139,6 +156,20 @@ receiver<level> operator << ( const logger<level> & _logger, T & _message )
 {
     return receiver<level>( &_logger ).treat( _message, true );
 }
-} // namespace
+// -------------------------------------------------------------------------- //
 
+// hack to catch std::endl;
+typedef std::basic_ostream<char, std::char_traits<char> > cout_type;
+typedef cout_type & ( *standard_endline )( cout_type & );
+
+// -------------------------------------------------------------------------- //
+
+template< unsigned level >
+receiver<level> operator<<( const receiver<level> & _recv, standard_endline )
+{
+    _recv.signal_endl();
+    return _recv;
+}
+
+} // namespace
 #endif QLOG_HPP
