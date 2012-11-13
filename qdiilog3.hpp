@@ -161,14 +161,14 @@ private:
 
 // -------------------------------------------------------------------------- //
 template< unsigned level,typename T > inline
-receiver<level> operator<<( const receiver<level> & _receiver,  T & _message )
+receiver<level> operator<<( const receiver<level> & _receiver,  const T & _message )
 {
     return _receiver.treat( _message, false );
 }
 
 // -------------------------------------------------------------------------- //
 template< unsigned level, typename T > inline
-receiver<level> operator << ( const logger<level> & _logger, T & _message )
+receiver<level> operator << ( const logger<level> & _logger, const T & _message )
 {
     return receiver<level>( &_logger ).treat( _message, true );
 }

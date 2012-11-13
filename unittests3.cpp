@@ -58,9 +58,19 @@ TEST( ConditionalLogging )
     logger(false) << "1 2 3";
 
     CHECK_EQUAL( "a b c", output.str() );
-
 }
 
+TEST( Numbers )
+{
+    std::cout << "Numbers" << std::endl;
+    logger<loglevel::error> logger;
+    std::ostringstream output;
+    logger.setOutput( output );
+    logger << 1L << 2 << 3UL;
+
+
+    CHECK_EQUAL( "123", output.str() );
+}
 
 int main( int , char ** )
 {
