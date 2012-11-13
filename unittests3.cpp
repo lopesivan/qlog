@@ -349,11 +349,11 @@ TEST( PrependEndl )
     std::ostringstream output;
     logger.set_output( output );
     logger.prepend("a");
-
     logger << std::endl;
 
     CHECK_EQUAL( "a\n", output.str() );
 }
+
 int main( int , char ** )
 {
     return UnitTest::RunAllTests();

@@ -84,7 +84,7 @@ struct logger
         unregister_me( *this );
     }
 
-    logger& operator=(const logger&);
+    logger & operator=( const logger & );
 
     bool isDisabled() const { return m_disabled; }
 
@@ -125,7 +125,7 @@ struct logger
     {
         if( can_log() )
         {
-            if (first_message && m_prepend)
+            if( first_message && m_prepend )
                 ( *m_output ) << m_prepend;
 
             _func( *m_output );
@@ -154,7 +154,7 @@ private:
 private:
     // this vectors permits to act on loggers of the same level belonging
     // to different compile units.
-    static std::vector<logger*> * m_loggers;
+    static std::vector<logger *> * m_loggers;
     static void register_me( logger & _logger )
     {
         if( !m_loggers )
@@ -165,13 +165,15 @@ private:
 
     static void unregister_me( logger & _logger )
     {
-        typename std::vector<logger*>::iterator it = m_loggers->begin();
-        const typename std::vector<logger*>::iterator end = m_loggers->end();
-        for (; it != end;++it)
+        typename std::vector<logger *>::iterator it = m_loggers->begin();
+        const typename std::vector<logger *>::iterator end = m_loggers->end();
+
+        for( ; it != end; ++it )
         {
-            if (*it == &_logger)
+            if( *it == &_logger )
                 break;
         }
+
         assert( it != end );
         m_loggers->erase( it );
 
@@ -186,6 +188,7 @@ public:
     static void set_all_outputs( std::ostream & _new_output )
     {
         const typename std::vector<logger *>::iterator end = m_loggers->end();
+
         for( typename std::vector<logger *>::iterator logger = m_loggers->begin();
                 logger != end; ++logger )
         {
@@ -299,7 +302,6 @@ receiver<level> operator<<( const logger<level> & _logger, standard_endline _fun
 #   define QDIILOG_NAME_LOGGER_ERROR error
 #endif
 
-
 static logger<loglevel::debug> QDIILOG_NAME_LOGGER_DEBUG ;
 static logger<loglevel::trace> QDIILOG_NAME_LOGGER_TRACE ;
 static logger<loglevel::info> QDIILOG_NAME_LOGGER_INFO ;
@@ -314,6 +316,102 @@ void set_output( std::ostream & _new_output )
     logger< loglevel::info>::set_all_outputs( _new_output );
     logger< loglevel::warning>::set_all_outputs( _new_output );
     logger< loglevel::error>::set_all_outputs( _new_output );
+}
+
+// -------------------------------------------------------------------------- //
+
+namespace bash
+{
+static const unsigned black = 1;
+static const unsigned red = 2;
+static const unsigned green = 3;
+static const unsigned yellow = 4;
+static const unsigned blue = 5;
+static const unsigned magenta = 6;
+static const unsigned cyan = 7;
+static const unsigned white = 8;
+
+struct color
+{
+    color()
+        :m_foreground("\033[0m")
+        ,m_background("")
+        ,m_bold("")
+    {
+    }
+
+    explicit
+    color( unsigned _foreground, bool _bold = false )
+        :m_foreground("\033[0m")
+        ,m_background("")
+        ,m_bold( _bold ? "\033[1m" : "\033[0m" )
+    {
+        switch( _foreground )
+        {
+        case black: m_foreground = "\033[30m"; break;
+        case red: m_foreground = "\033[31m"; break;
+        case green: m_foreground = "\033[32m"; break;
+        case yellow: m_foreground = "\033[33m"; break;
+        case blue: m_foreground = "\033[34m"; break;
+        case magenta: m_foreground = "\033[35m"; break;
+        case cyan: m_foreground = "\033[36m"; break;
+        case white: m_foreground = "\033[37m"; break;
+        }
+    }
+
+
+    color( unsigned _foreground, unsigned _background, bool _bold = false )
+        :m_foreground("")
+        ,m_background("")
+        ,m_bold( _bold ? "\033[1m" : "\033[0m" )
+    {
+        switch( _foreground )
+        {
+        case black: m_foreground = "\033[30;"; break;
+        case red: m_foreground = "\033[31;"; break;
+        case green: m_foreground = "\033[32;"; break;
+        case yellow: m_foreground = "\033[33;"; break;
+        case blue: m_foreground = "\033[34;"; break;
+        case magenta: m_foreground = "\033[35;"; break;
+        case cyan: m_foreground = "\033[36;"; break;
+        case white: m_foreground = "\033[37;"; break;
+        }
+
+        switch( _background )
+        {
+        case black: m_background = "\033[40m"; break;
+        case red: m_background = "\033[41m"; break;
+        case green: m_background = "\033[42m"; break;
+        case yellow: m_background = "\033[43m"; break;
+        case blue: m_background = "\033[44m"; break;
+        case magenta: m_background = "\033[45m"; break;
+        case cyan: m_background = "\033[46m"; break;
+        case white: m_background = "\033[47m"; break;
+        }
+    }
+
+    const char * getBold() const { return m_bold; }
+    const char * getBackground() const { return m_background; }
+    const char * getForeground() const { return m_foreground; }
+
+private:
+    const char * m_bold;
+    const char * m_foreground;
+    const char * m_background;
+};
+
+} // namespace bash
+
+template<unsigned level>
+receiver<level> operator <<( const logger<level> & _logger, const bash::color & _color )
+{
+    return _logger << _color.getBold() << _color.getForeground() << _color.getBackground();
+}
+
+template<unsigned level>
+receiver<level> operator <<( const receiver<level> & _recv, const bash::color & _color )
+{
+    return _recv << _color.getBold() << _color.getForeground() << _color.getBackground();
 }
 
 } // namespace
