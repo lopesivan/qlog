@@ -401,6 +401,17 @@ static const unsigned cyan = 7;
 static const unsigned white = 8;
 static const unsigned gray = 9;
 
+// -------------------------------------------------------------------------- //
+struct underline
+{
+};
+
+// -------------------------------------------------------------------------- //
+struct blink
+{
+};
+
+
 #ifndef WIN32
 struct color
 {
@@ -483,11 +494,6 @@ receiver<level> operator <<( const receiver<level> & _recv, const color & _color
 }
 
 // -------------------------------------------------------------------------- //
-struct underline
-{
-};
-
-// -------------------------------------------------------------------------- //
 template<unsigned level>
 receiver<level> operator <<( const logger<level> & _logger, const underline & )
 {
@@ -499,11 +505,6 @@ receiver<level> operator <<( const receiver<level> & _recv, const underline & )
 {
     return _recv << "\e[4m";
 }
-
-// -------------------------------------------------------------------------- //
-struct blink
-{
-};
 
 // -------------------------------------------------------------------------- //
 template<unsigned level>
@@ -601,6 +602,31 @@ receiver<level> operator <<( const receiver<level> & _recv, const color & _color
     assert(settings::set_text_attribute && settings::console_handle);
 	settings::set_text_attribute( settings::console_handle, _color.getAttributes() );
 	return _recv;
+}
+
+// -------------------------------------------------------------------------- //
+template<unsigned level>
+receiver<level> operator <<( const logger<level> & _logger, const underline & )
+{
+    return _logger;
+}
+
+template<unsigned level>
+receiver<level> operator <<( const receiver<level> & _recv, const underline & )
+{
+    return _recv;
+}
+// -------------------------------------------------------------------------- //
+template<unsigned level>
+receiver<level> operator <<( const logger<level> & _logger, const blink & )
+{
+    return _logger;
+}
+
+template<unsigned level>
+receiver<level> operator <<( const receiver<level> & _recv, const blink & )
+{
+    return _recv;
 }
 
 #endif
