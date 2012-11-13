@@ -376,6 +376,8 @@ TEST( Colors )
 	logger << color(blue, red) << "This line should be blue on red" << color() << '\n';
 	logger << color(red, green) << "This line should be red on green" << color() << '\n';
 	logger << color(red, blue) << "This line should be red on blue" << color() << '\n';
+    logger << "This " << underline() << "word" << color() << " should be underlined" << '\n';
+    logger << "This " << blink() << "word" << color() << " should be blinking" << '\n';
 	logger << "This " << color(blue, red) << "word" << color() << " should be blue on red\n";
 	logger << "This " << color(green, blue, true) << "word" << color() << " should be bold green on blue\n";
 

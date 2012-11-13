@@ -482,6 +482,42 @@ receiver<level> operator <<( const receiver<level> & _recv, const color & _color
     return _recv << _color.getBold() << _color.getForeground() << _color.getBackground();
 }
 
+// -------------------------------------------------------------------------- //
+struct underline
+{
+};
+
+// -------------------------------------------------------------------------- //
+template<unsigned level>
+receiver<level> operator <<( const logger<level> & _logger, const underline & )
+{
+    return _logger << "\e[4m";
+}
+
+template<unsigned level>
+receiver<level> operator <<( const receiver<level> & _recv, const underline & )
+{
+    return _recv << "\e[4m";
+}
+
+// -------------------------------------------------------------------------- //
+struct blink
+{
+};
+
+// -------------------------------------------------------------------------- //
+template<unsigned level>
+receiver<level> operator <<( const logger<level> & _logger, const blink & )
+{
+    return _logger << "\e[5m";
+}
+
+template<unsigned level>
+receiver<level> operator <<( const receiver<level> & _recv, const blink & )
+{
+    return _recv << "\e[5m";
+}
+
 #else // WIN32
 
 struct color
