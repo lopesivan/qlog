@@ -367,15 +367,15 @@ TEST( Colors )
     logger << color(green) << "This line should be green on black\n";
 	logger << color(red) << "This line should be red on black\n";
 	logger << color(blue) << "This line should be blue on black\n";
-	logger << color(green, true) << "This line should be bold green on black\n";
+	logger << color(green, true) << "This line should be bold green on black" << color() << '\n';
 	logger << color(yellow) << "This line should be yellow on black\n";
 	logger << color(yellow, true) << "This line should be bold yellow on black\n";
-	logger << color(red, true) << "This line should be bold red on black\n";
-	logger << color(blue, true) << "This line should be bold blue on black\n";
-	logger << color(green, red) << "This line should be green on red\n" << color();
-	logger << color(blue, red) << "This line should be blue on red\n" << color();
-	logger << color(red, green) << "This line should be red on green\n" << color();
-	logger << color(red, blue) << "This line should be red on blue\n" << color();
+	logger << color(red, true) << "This line should be bold red on black" << color() << '\n';
+	logger << color(blue, true) << "This line should be bold blue on black" << color() << '\n';
+	logger << color(green, red) << "This line should be green on red" << color() << '\n';
+	logger << color(blue, red) << "This line should be blue on red" << color() << '\n';
+	logger << color(red, green) << "This line should be red on green" << color() << '\n';
+	logger << color(red, blue) << "This line should be red on blue" << color() << '\n';
 	logger << "This " << color(blue, red) << "word" << color() << " should be blue on red\n";
 	logger << "This " << color(green, blue, true) << "word" << color() << " should be bold green on blue\n";
 

@@ -115,7 +115,7 @@ void destroy()
 {
 	if (settings::initialized)
 	{
-		
+
 #		ifdef WIN32
 		settings::console_handle = 0;
 		settings::set_text_attribute = 0;
@@ -415,7 +415,7 @@ struct color
     color( unsigned _foreground, bool _bold = false )
         :m_foreground("\033[0m")
         ,m_background("")
-        ,m_bold( _bold ? "\033[1m" : "\033[0m" )
+        ,m_bold( _bold ? "\033[1m" : "" )
     {
         switch( _foreground )
         {
@@ -428,12 +428,12 @@ struct color
         case cyan: m_foreground = "\033[36m"; break;
         case white: m_foreground = "\033[37m"; break;
         }
-    } 
+    }
 
     color( unsigned _foreground, unsigned _background, bool _bold = false )
         :m_foreground("")
         ,m_background("")
-        ,m_bold( _bold ? "\033[1m" : "\033[0m" )
+        ,m_bold( _bold ? "\033[1m" : "" )
     {
         switch( _foreground )
         {
@@ -449,14 +449,14 @@ struct color
 
         switch( _background )
         {
-        case black: m_background = "\033[40m"; break;
-        case red: m_background = "\033[41m"; break;
-        case green: m_background = "\033[42m"; break;
-        case yellow: m_background = "\033[43m"; break;
-        case blue: m_background = "\033[44m"; break;
-        case magenta: m_background = "\033[45m"; break;
-        case cyan: m_background = "\033[46m"; break;
-        case white: m_background = "\033[47m"; break;
+        case black: m_background = "40m"; break;
+        case red: m_background = "41m"; break;
+        case green: m_background = "42m"; break;
+        case yellow: m_background = "43m"; break;
+        case blue: m_background = "44m"; break;
+        case magenta: m_background = "45m"; break;
+        case cyan: m_background = "46m"; break;
+        case white: m_background = "47m"; break;
         }
     }
 
@@ -465,9 +465,9 @@ struct color
     const char * getForeground() const { return m_foreground; }
 
 private:
-    const char * m_bold;
     const char * m_foreground;
     const char * m_background;
+    const char * m_bold;
 };
 
 template<unsigned level>
@@ -522,10 +522,10 @@ private:
 		case gray: m_attributes = FOREGROUND_INTENSITY; break;
 		case magenta: m_attributes = FOREGROUND_BLUE | FOREGROUND_RED; break;
 
-		default: 
+		default:
 		case white: m_attributes = FOREGROUND_BLUE | FOREGROUND_RED | FOREGROUND_GREEN; break;
 		}
-		if (_bold) 
+		if (_bold)
 			m_attributes |= FOREGROUND_INTENSITY;
 	}
 
@@ -567,7 +567,7 @@ receiver<level> operator <<( const receiver<level> & _recv, const color & _color
 	return _recv;
 }
 
-#endif 
+#endif
 
 } // namespace
 #endif // QLOG_HPP
