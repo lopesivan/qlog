@@ -16,14 +16,18 @@ namespace QLOG_NAMESPACE
 
 namespace loglevel
 {
-    static const unsigned disabled = 0;
+static const unsigned disabled = 0;
 
-    static const unsigned debug = 1;
-    static const unsigned trace = 2;
-    static const unsigned info = 3;
-    static const unsigned warning = 4;
-    static const unsigned error = 5;
+static const unsigned debug = 1;
+static const unsigned trace = 2;
+static const unsigned info = 3;
+static const unsigned warning = 4;
+static const unsigned error = 5;
 }
+
+// hack to catch std::endl;
+typedef std::basic_ostream<char, std::char_traits<char> > cout_type;
+typedef cout_type & ( *standard_endline )( cout_type & );
 
 // -------------------------------------------------------------------------- //
 /**@struct logger
@@ -39,17 +43,24 @@ struct logger
         ,m_append( 0 )
     {}
 
+    logger( const logger & _logger )
+        :m_disabled( _logger.m_disabled )
+        ,m_output( _logger.m_output )
+        ,m_prepend( _logger.m_prepend )
+        ,m_append( _logger.m_append )
+    {}
+
     bool isDisabled() const { return m_disabled; }
 
     template< typename T >
     void treat( const T & _message, bool _firstPart ) const
     {
-        if (!m_disabled && m_output)
+        if( !m_disabled && m_output )
         {
-            if (_firstPart && m_prepend)
-                (*m_output) << m_prepend;
+            if( _firstPart && m_prepend )
+                ( *m_output ) << m_prepend;
 
-            (*m_output) << _message;
+            ( *m_output ) << _message;
         }
     }
 
@@ -70,18 +81,23 @@ struct logger
 
     void signal_end() const
     {
-        if (!m_disabled && m_output)
+        if( !m_disabled && m_prepend )
+            ( *m_output ) << m_prepend;
+    }
+
+    void signal( standard_endline _func ) const
+    {
+        if( !m_disabled && m_output )
         {
-            (*m_output) << m_append;
+            _func( *m_output );
         }
     }
 
-    void signal_endl() const
+    logger operator()( bool _cond )
     {
-        if (!m_disabled && m_output)
-        {
-            std::endl(*m_output);
-        }
+        logger ret( *this );
+        ret.m_disabled = !_cond;
+        return ret;
     }
 
 private:
@@ -102,7 +118,7 @@ struct receiver
         ,m_muted( _muted )
     {}
 
-    receiver( const receiver & _copy)
+    receiver( const receiver & _copy )
         :m_treated( false )
         ,m_logger( _copy.m_logger )
         ,m_muted( _copy.m_muted )
@@ -115,11 +131,11 @@ struct receiver
     }
 
     bool isMuted() const { return m_muted; }
-    void signal_endl() const
+    void signal( standard_endline _func ) const
     {
-        if (!isMuted())
+        if( !isMuted() )
         {
-            m_logger->signal_endl();
+            m_logger->signal( _func );
         }
     }
 
@@ -128,14 +144,14 @@ struct receiver
     {
         m_treated = true;
 
-        if(!m_muted)
+        if( !m_muted )
             m_logger->treat( _message, _firstPart );
 
         return *this;
     }
 
 private:
-    receiver operator=(const receiver&);
+    receiver operator=( const receiver & );
 
 private:
     mutable bool m_treated;
@@ -156,18 +172,12 @@ receiver<level> operator << ( const logger<level> & _logger, T & _message )
 {
     return receiver<level>( &_logger ).treat( _message, true );
 }
-// -------------------------------------------------------------------------- //
-
-// hack to catch std::endl;
-typedef std::basic_ostream<char, std::char_traits<char> > cout_type;
-typedef cout_type & ( *standard_endline )( cout_type & );
 
 // -------------------------------------------------------------------------- //
-
 template< unsigned level >
-receiver<level> operator<<( const receiver<level> & _recv, standard_endline )
+receiver<level> operator<<( const receiver<level> & _recv, standard_endline _func )
 {
-    _recv.signal_endl();
+    _recv.signal( _func );
     return _recv;
 }
 

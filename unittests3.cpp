@@ -48,6 +48,19 @@ TEST( StdEndl )
     CHECK_EQUAL( "a b c\n1 2 3", output.str() );
 }
 
+TEST( ConditionalLogging )
+{
+    std::cout << "ConditionalLogging" << std::endl;
+    logger<loglevel::error> logger;
+    std::ostringstream output;
+    logger.setOutput( output );
+    logger(true) << "a b c";
+    logger(false) << "1 2 3";
+
+    CHECK_EQUAL( "a b c", output.str() );
+
+}
+
 
 int main( int , char ** )
 {
