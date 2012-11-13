@@ -593,7 +593,7 @@ receiver<level> operator <<( const logger<level> & _logger, const color & _color
 {
 	assert(settings::set_text_attribute && settings::console_handle);
 	settings::set_text_attribute( settings::console_handle, _color.getAttributes() );
-	return receiver<level>( &_logger );
+    return receiver<level>( &_logger ).treat("", true);
 }
 
 template<unsigned level>
@@ -601,32 +601,32 @@ receiver<level> operator <<( const receiver<level> & _recv, const color & _color
 {
     assert(settings::set_text_attribute && settings::console_handle);
 	settings::set_text_attribute( settings::console_handle, _color.getAttributes() );
-	return _recv;
+	return _recv.treat("", false);
 }
 
 // -------------------------------------------------------------------------- //
 template<unsigned level>
 receiver<level> operator <<( const logger<level> & _logger, const underline & )
 {
-    return _logger;
+    return receiver<level>( &_logger ).treat("", true);
 }
 
 template<unsigned level>
 receiver<level> operator <<( const receiver<level> & _recv, const underline & )
 {
-    return _recv;
+	return _recv.treat("", false);
 }
 // -------------------------------------------------------------------------- //
 template<unsigned level>
 receiver<level> operator <<( const logger<level> & _logger, const blink & )
 {
-    return _logger;
+    return receiver<level>( &_logger ).treat("", true);
 }
 
 template<unsigned level>
 receiver<level> operator <<( const receiver<level> & _recv, const blink & )
 {
-    return _recv;
+	return _recv.treat("", false);
 }
 
 #endif
