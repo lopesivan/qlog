@@ -250,7 +250,6 @@
  * }
  * @endcode
  *
- *
  */
 
 #include <ostream>
@@ -407,6 +406,10 @@ private:
 // -------------------------------------------------------------------------- //
 struct decorater
 {
+	decorater()
+		:m_last_index(0)
+	{
+	}
     void add_decoration( decoration * _deco )
     {
         if (m_last_index < 10 && _deco)
@@ -431,7 +434,7 @@ struct decorater
         }
         m_last_index = 0;
     }
-    mutable size_t m_last_index = 0;
+    mutable size_t m_last_index;
     decoration * m_list[10];
 };
 
@@ -439,23 +442,6 @@ decorater & operator << (decorater & _dec, const char * _txt)
 {
     _dec.add_decoration( new text_decoration(_txt) );
     return _dec;
-}
-
-// -------------------------------------------------------------------------- //
-/**@brief Initializes the library
- * @note This is only useful on Windows */
-inline
-void init()
-{
-    if( !settings::initialized )
-    {
-#		ifdef WIN32
-        settings::console_handle = GetStdHandle( STD_OUTPUT_HANDLE );
-        settings::set_text_attribute = static_cast<console_function>( get_console_function( "SetConsoleTextAttribute" ) );
-#		endif
-
-        settings::initialized = true;
-    }
 }
 
 // -------------------------------------------------------------------------- //
@@ -621,6 +607,9 @@ struct logger
         ret.m_disabled = !_cond;
         return ret;
     }
+
+	void disable() { m_disabled = true; }
+	void enable() { m_disabled = false; }
 
 private:
     bool m_disabled;
@@ -807,28 +796,45 @@ void destroy()
 #		endif
 
         settings::initialized = false;
-    }
 
-     QLOG_NAME_LOGGER_DEBUG . reset_decoration();
-     QLOG_NAME_LOGGER_TRACE . reset_decoration();
-     QLOG_NAME_LOGGER_INFO . reset_decoration();
-     QLOG_NAME_LOGGER_WARNING . reset_decoration();
-     QLOG_NAME_LOGGER_ERROR . reset_decoration();
+		QLOG_NAME_LOGGER_DEBUG . reset_decoration();
+		QLOG_NAME_LOGGER_TRACE . reset_decoration();
+		QLOG_NAME_LOGGER_INFO . reset_decoration();
+		QLOG_NAME_LOGGER_WARNING . reset_decoration();
+		QLOG_NAME_LOGGER_ERROR . reset_decoration();
 
-     struct nullstream : public std::ostream
-     {
-         virtual ~nullstream() { }
-     };
+		QLOG_NAME_LOGGER_DEBUG . disable();
+		QLOG_NAME_LOGGER_TRACE . disable();
+		QLOG_NAME_LOGGER_INFO . disable();
+		QLOG_NAME_LOGGER_WARNING . disable();
+		QLOG_NAME_LOGGER_ERROR . disable();
 
-     static nullstream ns;
-
-     QLOG_NAME_LOGGER_DEBUG . set_output(  ns );
-     QLOG_NAME_LOGGER_TRACE . set_output( ns );
-     QLOG_NAME_LOGGER_INFO . set_output( ns );
-     QLOG_NAME_LOGGER_WARNING . set_output( ns );
-     QLOG_NAME_LOGGER_ERROR . set_output( ns );
+		settings::initialized = false;
+	}
 }
 // -------------------------------------------------------------------------- //
+/**@brief Initializes the library
+ * @note This is only useful on Windows */
+inline
+void init()
+{
+    if( !settings::initialized )
+    {
+#		ifdef WIN32
+        settings::console_handle = GetStdHandle( STD_OUTPUT_HANDLE );
+        settings::set_text_attribute = static_cast<console_function>( get_console_function( "SetConsoleTextAttribute" ) );
+#		endif
+
+		settings::initialized = true;
+
+		QLOG_NAME_LOGGER_DEBUG . enable();
+		QLOG_NAME_LOGGER_TRACE . enable();
+		QLOG_NAME_LOGGER_INFO . enable();
+		QLOG_NAME_LOGGER_WARNING . enable();
+		QLOG_NAME_LOGGER_ERROR . enable();
+    }
+}
+
 
 static const unsigned black = 1;
 static const unsigned red = 2;

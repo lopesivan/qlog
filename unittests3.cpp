@@ -40,6 +40,20 @@ TEST_FIXTURE( qlog_resetter, TwoStrings )
     CHECK_EQUAL( "a b c 1 2 3", output.str() );
 }
 
+TEST_FIXTURE( qlog_resetter, Disable )
+{
+    std::cout << "Disable" << std::endl;
+    logger<loglevel::error> logger;
+    std::ostringstream output;
+    logger.set_output( output );
+	logger.disable();
+    logger << "a b c" << '\n' << "d e f" << std::endl;
+	logger << "2";
+
+    CHECK_EQUAL( 0, output.str().size() );
+}
+
+
 TEST_FIXTURE( qlog_resetter, CarriageReturn )
 {
     std::cout << "CarriageReturn" << std::endl;
@@ -241,6 +255,7 @@ TEST_FIXTURE( qlog_resetter, WritingToAFile )
 TEST_FIXTURE( qlog_resetter, AppendOneString )
 {
     std::cout << "AppendOneString" << std::endl;
+
     // setting every output to our test stream
     std::ostringstream output;
     set_output( output );
