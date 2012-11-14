@@ -5,7 +5,20 @@
 
 using namespace qlog;
 
-TEST( OneString )
+struct qlog_resetter
+{
+    qlog_resetter()
+    {
+        qlog::init();
+    }
+
+    virtual ~qlog_resetter()
+    {
+        qlog::destroy();
+    }
+};
+
+TEST_FIXTURE( qlog_resetter, OneString )
 {
     std::cout << "OneString" << std::endl;
     logger<loglevel::error> logger;
@@ -16,7 +29,7 @@ TEST( OneString )
     CHECK_EQUAL( "a b c", output.str() );
 }
 
-TEST( TwoStrings )
+TEST_FIXTURE( qlog_resetter, TwoStrings )
 {
     std::cout << "TwoStrings" << std::endl;
     logger<loglevel::error> logger;
@@ -27,7 +40,7 @@ TEST( TwoStrings )
     CHECK_EQUAL( "a b c 1 2 3", output.str() );
 }
 
-TEST( CarriageReturn )
+TEST_FIXTURE( qlog_resetter, CarriageReturn )
 {
     std::cout << "CarriageReturn" << std::endl;
     logger<loglevel::error> logger;
@@ -38,7 +51,7 @@ TEST( CarriageReturn )
     CHECK_EQUAL( "a b c\n1 2 3", output.str() );
 }
 
-TEST( StdEndl )
+TEST_FIXTURE( qlog_resetter, StdEndl )
 {
     std::cout << "StdEndl" << std::endl;
     logger<loglevel::error> logger;
@@ -49,7 +62,7 @@ TEST( StdEndl )
     CHECK_EQUAL( "a b c\n1 2 3", output.str() );
 }
 
-TEST( ConditionalLogging )
+TEST_FIXTURE( qlog_resetter, ConditionalLogging )
 {
     std::cout << "ConditionalLogging" << std::endl;
     logger<loglevel::error> logger;
@@ -61,7 +74,7 @@ TEST( ConditionalLogging )
     CHECK_EQUAL( "a b c", output.str() );
 }
 
-TEST( Numbers )
+TEST_FIXTURE( qlog_resetter, Numbers )
 {
     std::cout << "Numbers" << std::endl;
     logger<loglevel::error> logger;
@@ -72,7 +85,7 @@ TEST( Numbers )
     CHECK_EQUAL( "123", output.str() );
 }
 
-TEST( Loglevel )
+TEST_FIXTURE( qlog_resetter, Loglevel )
 {
     std::cout << "Loglevel" << std::endl;
     set_loglevel( loglevel::info );
@@ -119,7 +132,7 @@ TEST( Loglevel )
     }
 }
 
-TEST( LoglevelWithStdEndl )
+TEST_FIXTURE( qlog_resetter, LoglevelWithStdEndl )
 {
     std::cout << "LoglevelWithStdEndl" << std::endl;
     set_loglevel( loglevel::info );
@@ -166,7 +179,7 @@ TEST( LoglevelWithStdEndl )
     }
 }
 
-TEST( MultipleWritingToSingleOutput )
+TEST_FIXTURE( qlog_resetter, MultipleWritingToSingleOutput )
 {
     std::cout << "MultipleWritingToSingleOutput" << std::endl;
     std::ostringstream output;
@@ -189,7 +202,7 @@ TEST( MultipleWritingToSingleOutput )
     CHECK_EQUAL(output.str(), "79");
 }
 
-TEST( WritingToAFile )
+TEST_FIXTURE( qlog_resetter, WritingToAFile )
 {
     std::cout << "WritingToAFile" << std::endl;
     const std::string filename("tmptestfile");
@@ -225,7 +238,7 @@ TEST( WritingToAFile )
     }
 }
 
-TEST( AppendOneString )
+TEST_FIXTURE( qlog_resetter, AppendOneString )
 {
     std::cout << "AppendOneString" << std::endl;
     // setting every output to our test stream
@@ -233,7 +246,7 @@ TEST( AppendOneString )
     set_output( output );
 
     set_loglevel( loglevel::debug );
-    qlog::debug.append("a");
+    qlog::debug.append() << "a";
 
     qlog::debug << "1";
     qlog::trace << "2";
@@ -243,10 +256,10 @@ TEST( AppendOneString )
 
     CHECK_EQUAL( "1a2345", output.str() );
 
-    qlog::debug.append("");
+    qlog::debug.append() << "";
 }
 
-TEST( AppendTwoStrings )
+TEST_FIXTURE( qlog_resetter, AppendTwoStrings )
 {
     std::cout << "AppendTwoStrings" << std::endl;
     // setting every output to our test stream
@@ -254,7 +267,7 @@ TEST( AppendTwoStrings )
     set_output( output );
 
     set_loglevel( loglevel::debug );
-    qlog::debug.append("a");
+    qlog::debug.append() << "a";
 
     qlog::debug << "1" << "2";
     qlog::trace << "2";
@@ -264,10 +277,10 @@ TEST( AppendTwoStrings )
 
     CHECK_EQUAL( "12a2345", output.str() );
 
-    qlog::debug.append("");
+    qlog::debug.append() << "";
 }
 
-TEST( AppendTwoStringsAndEndl  )
+TEST_FIXTURE( qlog_resetter, AppendTwoStringsAndEndl  )
 {
     std::cout << "AppendTwoStringsAndEndl" << std::endl;
 
@@ -276,8 +289,8 @@ TEST( AppendTwoStringsAndEndl  )
     set_output( output );
 
     set_loglevel( loglevel::debug );
-    qlog::debug.append("a");
-    qlog::trace.append("b");
+    qlog::debug.append() << "a";
+    qlog::trace.append() << "b";
 
     qlog::debug << "1" << "2" << std::endl;
     qlog::trace << "2";
@@ -287,77 +300,77 @@ TEST( AppendTwoStringsAndEndl  )
 
     CHECK_EQUAL( "12\na2b345", output.str() );
 
-    qlog::debug.append("");
-    qlog::trace.append("");
+    qlog::debug.append() << "";
+    qlog::trace.append() << "";
 }
 
-TEST( AppendEndl )
+TEST_FIXTURE( qlog_resetter, AppendEndl )
 {
     std::cout << "AppendEndl" << std::endl;
     logger<loglevel::error> logger;
     std::ostringstream output;
     logger.set_output( output );
-    logger.change_append("a");
+    logger.append() << "a";
 
     logger << std::endl;
 
     CHECK_EQUAL( "\na", output.str() );
 }
 
-TEST( PrependOneString )
+TEST_FIXTURE( qlog_resetter, PrependOneString )
 {
     std::cout << "PrependOneString" << std::endl;
     logger<loglevel::error> logger;
     std::ostringstream output;
     logger.set_output( output );
-    logger.change_prepend("a");
+    logger.prepend() << "a";
 
     logger << "1";
 
     CHECK_EQUAL( "a1", output.str() );
 }
 
-TEST( PrependTwoStrings )
+TEST_FIXTURE( qlog_resetter, PrependTwoStrings )
 {
     std::cout << "PrependTwoStrings" << std::endl;
     logger<loglevel::error> logger;
     std::ostringstream output;
     logger.set_output( output );
-    logger.change_prepend("a");
+    logger.prepend() << "a";
 
     logger << "1" << "2";
 
     CHECK_EQUAL( "a12", output.str() );
 }
-TEST( PrependTwoStringsAndEndl )
+TEST_FIXTURE( qlog_resetter, PrependTwoStringsAndEndl )
 {
     std::cout << "PrependTwoStringsAndEndl" << std::endl;
     logger<loglevel::error> logger;
     std::ostringstream output;
     logger.set_output( output );
-    logger.change_prepend("a");
+    logger.prepend() << "a";
 
     logger << "1" << "2" << std::endl;
 
     CHECK_EQUAL( "a12\n", output.str() );
 }
 
-TEST( PrependEndl )
+TEST_FIXTURE( qlog_resetter, PrependEndl )
 {
     std::cout << "PrependOneString" << std::endl;
     logger<loglevel::error> logger;
     std::ostringstream output;
     logger.set_output( output );
-    logger.change_prepend("a");
+    logger.prepend() << "a";
     logger << std::endl;
 
     CHECK_EQUAL( "a\n", output.str() );
 }
 
-TEST( Colors )
+TEST_FIXTURE( qlog_resetter, Colors )
 {
     std::cout << "Colors" << std::endl;
-	qlog::init();
+
 
     logger<loglevel::error> logger;
     logger.set_output( std::cout );
@@ -381,127 +394,121 @@ TEST( Colors )
 	logger << "This " << color(blue, red) << "word" << color() << " should be blue on red\n";
 	logger << "This " << color(green, blue, true) << "word" << color() << " should be bold green on blue\n";
 
-	qlog::destroy();
+
 }
 
-TEST( ColorAppend )
+TEST_FIXTURE( qlog_resetter, ColorAppend )
 {
     std::cout << "ColorAppend" << std::endl;
-	qlog::init();
 
+    set_loglevel( loglevel::warning );
     logger<loglevel::error> logger_without_append;
-	logger<loglevel::error> logger_with_append;
+	logger<loglevel::warning> logger_with_append;
 
 	std::ostringstream output_witout_append;
 	std::ostringstream output_with_append;
 
-	logger_with_append.change_output(output_with_append);
-	logger_without_append.change_output(output_witout_append);
+	logger_with_append.set_output(output_with_append);
+	logger_without_append.set_output(output_witout_append);
 
-	logger_with_append.change_append("z");
+	logger_with_append.append() << "z";
 
 	logger_with_append << "a" << color(green) << "b";
 	logger_without_append << "a" << color(green) << "b";
 
 	logger_without_append << "z";
 
-	CHECK_EQUAL(output_witout_append.str(), output_with_append.str());
+    CHECK_EQUAL( output_witout_append.str(), output_with_append.str() );
 	logger_without_append << color(); // hack to restore color on windows
 
-	qlog::destroy();
 }
 
-TEST( ColorPrepend )
+TEST_FIXTURE( qlog_resetter, ColorPrepend )
 {
     std::cout << "ColorPrepend" << std::endl;
-	qlog::init();
 
-
+    set_loglevel( loglevel::warning );
     logger<loglevel::error> logger_without_prepend;
-	logger<loglevel::error> logger_with_prepend;
+	logger<loglevel::warning> logger_with_prepend;
 
 	std::ostringstream output_witout_append;
 	std::ostringstream output_with_append;
 
-	logger_with_prepend.change_output(output_with_append);
-	logger_without_prepend.change_output(output_witout_append);
+	logger_with_prepend.set_output(output_with_append);
+	logger_without_prepend.set_output(output_witout_append);
 
-	logger_with_prepend.change_prepend("z");
+	logger_with_prepend.prepend() << "z";
 
 	logger_with_prepend << color(green) << "b";
 	logger_without_prepend << "z" << color(green) << "b";
 
 	CHECK_EQUAL(output_witout_append.str(), output_with_append.str());
-	logger_with_prepend << color(); // hack to restore color on windows
-
-	qlog::destroy();
+    logger_without_prepend << color(); // hack to restore color on windows
 }
 
-TEST( BlinkPrepend )
+TEST_FIXTURE( qlog_resetter, BlinkPrepend )
 {
     std::cout << "BlinkPrepend" << std::endl;
-	qlog::init();
 
-
+    set_loglevel( loglevel::warning );
     logger<loglevel::error> logger_without_prepend;
-	logger<loglevel::error> logger_with_prepend;
+	logger<loglevel::warning> logger_with_prepend;
 
 	std::ostringstream output_witout_append;
 	std::ostringstream output_with_append;
 
-	logger_with_prepend.change_output(output_with_append);
-	logger_without_prepend.change_output(output_witout_append);
+	logger_with_prepend.set_output(output_with_append);
+	logger_without_prepend.set_output(output_witout_append);
 
-	logger_with_prepend.change_prepend("z");
+	logger_with_prepend.prepend() << "z";
 
 	logger_with_prepend << blink() << "b";
 	logger_without_prepend << "z" << blink() << "b";
 
 	CHECK_EQUAL(output_witout_append.str(), output_with_append.str());
 
-	qlog::destroy();
+
 }
 
-TEST( UnderlinePrepend )
+TEST_FIXTURE( qlog_resetter, UnderlinePrepend )
 {
     std::cout << "UnderlinePrepend" << std::endl;
-	qlog::init();
 
-
+    set_loglevel( loglevel::warning );
     logger<loglevel::error> logger_without_prepend;
-	logger<loglevel::error> logger_with_prepend;
+	logger<loglevel::warning> logger_with_prepend;
 
 	std::ostringstream output_witout_append;
 	std::ostringstream output_with_append;
 
-	logger_with_prepend.change_output(output_with_append);
-	logger_without_prepend.change_output(output_witout_append);
+	logger_with_prepend.set_output(output_with_append);
+	logger_without_prepend.set_output(output_witout_append);
 
-	logger_with_prepend.change_prepend("z");
+	logger_with_prepend.prepend() << "z";
 
 	logger_with_prepend << underline() << "b";
 	logger_without_prepend << "z" << underline() << "b";
 
 	CHECK_EQUAL(output_witout_append.str(), output_with_append.str());
 
-	qlog::destroy();
+
 }
 
-TEST( BlinkAppend )
+TEST_FIXTURE( qlog_resetter, BlinkAppend )
 {
     std::cout << "BlinkAppend" << std::endl;
-	qlog::init();
 
+    set_loglevel( loglevel::warning );
     logger<loglevel::error> logger_without_append;
-	logger<loglevel::error> logger_with_append;
+	logger<loglevel::warning> logger_with_append;
 
 	std::ostringstream output_witout_append;
 	std::ostringstream output_with_append;
 
-	logger_with_append.change_output(output_with_append);
-	logger_without_append.change_output(output_witout_append);
+	logger_with_append.set_output(output_with_append);
+	logger_without_append.set_output(output_witout_append);
 
-	logger_with_append.change_append("z");
+	logger_with_append.append() << "z";
 
 	logger_with_append << "a" << blink() << "b";
 	logger_without_append << "a" << blink() << "b";
@@ -511,24 +518,24 @@ TEST( BlinkAppend )
 	CHECK_EQUAL(output_witout_append.str(), output_with_append.str());
 	logger_without_append << color(); // hack to restore color on cmd
 
-	qlog::destroy();
+
 }
 
-TEST( UnderlineAppend )
+TEST_FIXTURE( qlog_resetter, UnderlineAppend )
 {
     std::cout << "UnderlineAppend" << std::endl;
-	qlog::init();
 
+    set_loglevel( loglevel::warning );
     logger<loglevel::error> logger_without_append;
-	logger<loglevel::error> logger_with_append;
+	logger<loglevel::warning> logger_with_append;
 
 	std::ostringstream output_witout_append;
 	std::ostringstream output_with_append;
 
-	logger_with_append.change_output(output_with_append);
-	logger_without_append.change_output(output_witout_append);
+	logger_with_append.set_output(output_with_append);
+	logger_without_append.set_output(output_witout_append);
 
-	logger_with_append.change_append("z");
+	logger_with_append.append() << "z";
 
 	logger_with_append << "a" << underline() << "b";
 	logger_without_append << "a" << underline() << "b";
@@ -537,8 +544,6 @@ TEST( UnderlineAppend )
 
 	CHECK_EQUAL(output_witout_append.str(), output_with_append.str());
 	logger_without_append << color(); // hack to restore color on cmd
-
-	qlog::destroy();
 }
 
 int main( int , char ** )

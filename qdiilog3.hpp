@@ -26,7 +26,7 @@
  * qlog::warning << "foo() was passed a null pointer" << std::endl;
  * @endcode
  *
- * REDIRECTING TO A FILE
+ * REDIRECTING TO A FILE
  * ---------------------
  * The objects will all log to std::cout by default, but you can change this
  * behaviour by calling set_output(). Actually, there are 2 set_output functions.
@@ -107,7 +107,7 @@
  * The special log level <c>loglevel::disable</c> will disable all output. No
  * messages will be written after this has been set.
  *
- * PREPENDING YOUR MESSAGES WITH SOME CUSTOM TEXT
+ * PREPENDING YOUR MESSAGES WITH SOME CUSTOM TEXT
  * ----------------------
  * Something I like when I debug is to have every message clearly stating if
  * it is a warning, an error, or whatever. Normally, I'd prepend the warning
@@ -118,18 +118,18 @@
  * @image html client.png
  * Here is an easy way to do that:
  * @code{.cpp}
- * qlog::info.prepend("[..] ");
- * qlog::warning.prepend("[ww] ");
- * qlog::error.prepend("[EE] ");
+ * qlog::info.prepend() << "[..] ";
+ * qlog::warning.prepend() << "[ww] ";
+ * qlog::error.prepend() << "[EE] ";
  * @endcode
  *
  *
- * NAMING AND NAMESPACES
+ * NAMING AND NAMESPACES
  * ---------------------
  * I normally like to ditch my objects on the global namespace but some people
- * don't. I have created a couple preprocessor directives if you want
+ * don't. I have created a couple preprocessor directives if you want
  * to personalize the name of the objects and retrict them into a namespace. By
- * default, 5 objects are created (qlog::debug, qlog::trace, qlog::info, qlog::warning
+ * default, 5 objects are created (qlog::debug, qlog::trace, qlog::info, qlog::warning
  * and qlog::error), and they are thrown into the global namespace. Now if you
  * want them to be called debug, trace, info, warning and error and to belong
  * to the namespace log, what you can do is:
@@ -254,8 +254,7 @@
  */
 
 #include <ostream>
-#include <vector>
-#include <assert.h>
+//#include <assert.h>
 
 // windows color support
 #ifdef WIN32
@@ -292,19 +291,25 @@ static const unsigned error = 5;
 }
 
 #ifdef WIN32
-void *get_console_function(char *name) {
-   static HMODULE kernel32=(HMODULE)0xffffffff;
-   if(kernel32==0)
-      return NULL;
-   if(kernel32==(HMODULE)0xffffffff) {
-      kernel32=LoadLibraryA("kernel32.dll");
-      if(kernel32==0)
-         return 0;
-   }
-   return GetProcAddress(kernel32,name);
+void * get_console_function( char * name )
+{
+    static HMODULE kernel32=( HMODULE )0xffffffff;
+
+    if( kernel32==0 )
+        return NULL;
+
+    if( kernel32==( HMODULE )0xffffffff )
+    {
+        kernel32=LoadLibraryA( "kernel32.dll" );
+
+        if( kernel32==0 )
+            return 0;
+    }
+
+    return GetProcAddress( kernel32,name );
 }
 
-typedef BOOL (WINAPI *console_function)(HANDLE hConsoleOutput, WORD attr);
+typedef BOOL ( WINAPI * console_function )( HANDLE hConsoleOutput, WORD attr );
 #endif
 
 // -------------------------------------------------------------------------- //
@@ -323,11 +328,11 @@ template<typename T>
 struct user_global_settings
 {
     static unsigned loglevel; ///< The current level of logging
-	static bool initialized;
+    static bool initialized;
 
 #ifdef WIN32
-	static HANDLE console_handle;
-	static console_function set_text_attribute;
+    static HANDLE console_handle;
+    static console_function set_text_attribute;
 #endif
 };
 
@@ -371,38 +376,86 @@ unsigned get_loglevel()
 }
 
 // -------------------------------------------------------------------------- //
+
+struct decoration
+{
+    virtual ~decoration() { }
+    virtual void apply( std::ostream & _ostr ) = 0;
+};
+
+struct text_decoration : public decoration
+{
+    explicit
+    text_decoration( const char * _txt )
+        :m_txt( _txt )
+    {
+    }
+
+    virtual void apply( std::ostream & _ostr )
+    {
+        if( m_txt )
+            _ostr << m_txt;
+    }
+
+    ~text_decoration()
+    {
+    }
+private:
+    const char * m_txt;
+};
+
+// -------------------------------------------------------------------------- //
+struct decorater
+{
+    void add_decoration( decoration * _deco )
+    {
+        if (m_last_index < 10 && _deco)
+        {
+            m_list[m_last_index++] = _deco;
+        }
+    }
+
+    void apply_all( std::ostream & _ostr )
+    {
+        for (size_t i = 0; i < m_last_index; ++i)
+        {
+            m_list[i]->apply(_ostr);
+        }
+    }
+
+    void reset()
+    {
+        for (size_t i = 0; i < m_last_index; ++i)
+        {
+            delete m_list[i];
+        }
+        m_last_index = 0;
+    }
+    mutable size_t m_last_index = 0;
+    decoration * m_list[10];
+};
+
+decorater & operator << (decorater & _dec, const char * _txt)
+{
+    _dec.add_decoration( new text_decoration(_txt) );
+    return _dec;
+}
+
+// -------------------------------------------------------------------------- //
 /**@brief Initializes the library
  * @note This is only useful on Windows */
 inline
 void init()
 {
-	if (!settings::initialized)
-	{
+    if( !settings::initialized )
+    {
 #		ifdef WIN32
-		settings::console_handle = GetStdHandle(STD_OUTPUT_HANDLE);
-		settings::set_text_attribute = static_cast<console_function>(get_console_function("SetConsoleTextAttribute"));
+        settings::console_handle = GetStdHandle( STD_OUTPUT_HANDLE );
+        settings::set_text_attribute = static_cast<console_function>( get_console_function( "SetConsoleTextAttribute" ) );
 #		endif
 
-		settings::initialized = true;
-	}
-}
-
-// -------------------------------------------------------------------------- //
-/**@brief Terminates the library
- * @note This is only useful on Windows */
-inline
-void destroy()
-{
-	if (settings::initialized)
-	{
-
-#		ifdef WIN32
-		settings::console_handle = 0;
-		settings::set_text_attribute = 0;
-#		endif
-
-		settings::initialized = false;
-	}
+        settings::initialized = true;
+    }
 }
 
 // -------------------------------------------------------------------------- //
@@ -419,11 +472,7 @@ struct logger
     explicit
     logger( bool _disabled = false )
         :m_disabled( _disabled )
-        ,m_output( 0 )
-        ,m_prepend( 0 )
-        ,m_append( 0 )
     {
-        register_me( *this );
     }
 
     /**@brief Copies a logger
@@ -432,17 +481,32 @@ struct logger
      * @param[in] _logger The logger to copy */
     logger( const logger & _logger )
         :m_disabled( _logger.m_disabled )
-        ,m_output( _logger.m_output )
-        ,m_prepend( _logger.m_prepend )
-        ,m_append( _logger.m_append )
     {
-        register_me( *this );
     }
 
     ~logger()
     {
-        unregister_me( *this );
     }
+
+    /**@brief Removes all prepending or appending text */
+    void reset_decoration()
+    {
+        reset_prepend();
+        reset_append();
+    }
+
+    /**@brief Removes all appending text */
+    void reset_append()
+    {
+        m_append.reset();
+    }
+
+    /**@brief Removes all prepending text */
+    void reset_prepend()
+    {
+        m_prepend.reset();
+    }
+
 
     /**@brief Assigns a logger
      * @param[in] _copy Another logger
@@ -473,8 +537,8 @@ struct logger
     {
         if( can_log() )
         {
-            if( _first_part && m_prepend )
-                ( *m_output ) << m_prepend;
+            if( _first_part )
+                m_prepend.apply_all( *m_output );
 
             ( *m_output ) << _message;
         }
@@ -507,21 +571,19 @@ struct logger
      */
     void set_output( std::ostream & _output )
     {
-        logger<level>::set_all_outputs( _output );
+        m_output = &_output;
     }
 
-    /**@brief Adds a custom text after all logged messages.
-     * @param[in] _txt The text to append */
-    void append( const char * _txt )
+    /**@brief Adds a custom text after all logged messages. */
+    decorater & append()
     {
-        logger<level>::append_all( _txt );
+        return m_append;
     }
 
-    /**@brief Adds a custom text before all logged messages
-     * @param[in] _txt The text to prepend */
-    void prepend( const char * _txt )
+    /**@brief Adds a custom text before all logged messages. */
+    decorater & prepend()
     {
-        logger<level>::prepend_all( _txt );
+        return m_prepend;
     }
 
     /**@brief Informs the logger that the last message was treated and that custom text can be appended
@@ -529,8 +591,8 @@ struct logger
      * @private */
     void signal_end() const
     {
-        if( can_log() && m_append )
-            ( *m_output ) << m_append;
+        if( can_log() )
+            m_append.apply_all( *m_output );
     }
 
     /**@endcond*/
@@ -543,8 +605,8 @@ struct logger
     {
         if( can_log() )
         {
-            if( _first_message && m_prepend )
-                ( *m_output ) << m_prepend;
+            if( _first_message )
+                m_prepend.apply_all( *m_output );
 
             _func( *m_output );
         }
@@ -562,9 +624,9 @@ struct logger
 
 private:
     bool m_disabled;
-    mutable std::ostream * m_output;
-    const char * m_prepend;
-    const char * m_append;
+    static std::ostream * m_output;
+    static decorater m_prepend;
+    static decorater m_append;
 
 private:
     /**@brief Helper function to check that the logger can output messages
@@ -574,113 +636,17 @@ private:
     {
         return ( level >= get_loglevel() ) && m_output && !isDisabled();
     }
-
-public:
-    void change_output( std::ostream & _output )
-    {
-        m_output = &_output;
-    }
-    void change_prepend( const char * _txt )
-    {
-        m_prepend = _txt;
-    }
-
-    void change_append( const char * _txt )
-    {
-        m_append = _txt;
-    }
-
-    /**@endcond */
-
-private:
-    // this vectors permits to act on loggers of the same level belonging
-    // to different compile units.
-    static std::vector<logger *> * m_loggers;
-
-    /**
-     * @cond GENERATE_INTERNAL_DOCUMENTATION
-     * @brief Adds a logger to a list of logger
-     * @param[in] _logger The logger to add to the list of loggers
-     *
-     * Each compile unit contains 5 loggers, one for debug, one for trace, one
-     * for info, etc. This vector contains all the logger instances for the
-     * debug level, or the info level, so that when any compile unit calls
-     * qlog::info.set_output(), the loggers of log level info, in every compile
-     * unit, direct their output to the file.
-     */
-    static void register_me( logger & _logger )
-    {
-        if( !m_loggers )
-            m_loggers = new std::vector<logger *>();
-
-        m_loggers->push_back( &_logger );
-    }
-
-    /**
-     * @brief Adds a logger to a list of loggers
-     * @param[in] _logger The logger to remove from the list of loggers
-     * @see register_me
-     */
-    static void unregister_me( logger & _logger )
-    {
-        typename std::vector<logger *>::iterator it = m_loggers->begin();
-        const typename std::vector<logger *>::iterator end = m_loggers->end();
-
-        for( ; it != end; ++it )
-        {
-            if( *it == &_logger )
-                break;
-        }
-
-        assert( it != end );
-        m_loggers->erase( it );
-
-        if( m_loggers->empty() )
-        {
-            delete m_loggers;
-            m_loggers = 0;
-        }
-    }
-
-public:
-    /**
-     * @brief Changes the output of all the loggers from all the compile units
-     * @param[in] _new_output A std::ostream that will be set in all loggers of a given log level
-     */
-    static void set_all_outputs( std::ostream & _new_output )
-    {
-        const typename std::vector<logger *>::iterator end = m_loggers->end();
-        for( typename std::vector<logger *>::iterator logger = m_loggers->begin();
-                logger != end; ++logger )
-        {
-            ( *logger )->change_output( _new_output );
-        }
-    }
-
-    static void prepend_all( const char * _txt )
-    {
-        const typename std::vector<logger *>::iterator end = m_loggers->end();
-        for( typename std::vector<logger *>::iterator logger = m_loggers->begin();
-                logger != end; ++logger )
-        {
-            ( *logger )->change_prepend( _txt );
-        }
-    }
-
-    static void append_all( const char * _txt )
-    {
-        const typename std::vector<logger *>::iterator end = m_loggers->end();
-        for( typename std::vector<logger *>::iterator logger = m_loggers->begin();
-                logger != end; ++logger )
-        {
-            ( *logger )->change_append( _txt );
-        }
-    }
     /** @endcond */
 };
 // -------------------------------------------------------------------------- //
 template< unsigned level >
-std::vector<logger<level> *> * logger<level>::m_loggers;
+std::ostream * logger<level>::m_output;
+
+template< unsigned level >
+decorater logger<level>::m_append;
+
+template< unsigned level >
+decorater logger<level>::m_prepend;
 
 // -------------------------------------------------------------------------- //
 /**@struct receiver
@@ -691,7 +657,7 @@ std::vector<logger<level> *> * logger<level>::m_loggers;
  * Let’s consider this example:
  * logger << "value = " << value;
  *
- * I want to append a custom text so that the written message
+ * I want to append a custom text so that the written message
  * looks something like "[..] value = 35\n", which means that I have to add
  * "\n" at some point. receiver is a helper structure that will let us know
  * about that.
@@ -819,13 +785,49 @@ static logger<loglevel::error> QLOG_NAME_LOGGER_ERROR ;
 inline
 void set_output( std::ostream & _new_output )
 {
-    logger< loglevel::debug>::set_all_outputs( _new_output );
-    logger< loglevel::trace>::set_all_outputs( _new_output );
-    logger< loglevel::info>::set_all_outputs( _new_output );
-    logger< loglevel::warning>::set_all_outputs( _new_output );
-    logger< loglevel::error>::set_all_outputs( _new_output );
+    logger< loglevel::debug >().set_output( _new_output );
+    logger< loglevel::trace >().set_output( _new_output );
+    logger< loglevel::info >().set_output( _new_output );
+    logger< loglevel::warning >().set_output( _new_output );
+    logger< loglevel::error >().set_output( _new_output );
 }
 
+// -------------------------------------------------------------------------- //
+/**@brief Terminates the library
+ * @note This is only useful on Windows */
+inline
+void destroy()
+{
+    if( settings::initialized )
+    {
+
+#		ifdef WIN32
+        settings::console_handle = 0;
+        settings::set_text_attribute = 0;
+#		endif
+
+        settings::initialized = false;
+    }
+
+     QLOG_NAME_LOGGER_DEBUG . reset_decoration();
+     QLOG_NAME_LOGGER_TRACE . reset_decoration();
+     QLOG_NAME_LOGGER_INFO . reset_decoration();
+     QLOG_NAME_LOGGER_WARNING . reset_decoration();
+     QLOG_NAME_LOGGER_ERROR . reset_decoration();
+
+     struct nullstream : public std::ostream
+     {
+         virtual ~nullstream() { }
+     };
+
+     static nullstream ns;
+
+     QLOG_NAME_LOGGER_DEBUG . set_output(  ns );
+     QLOG_NAME_LOGGER_TRACE . set_output( ns );
+     QLOG_NAME_LOGGER_INFO . set_output( ns );
+     QLOG_NAME_LOGGER_WARNING . set_output( ns );
+     QLOG_NAME_LOGGER_ERROR . set_output( ns );
+}
 // -------------------------------------------------------------------------- //
 
 static const unsigned black = 1;
@@ -898,17 +900,21 @@ struct blink
 #ifndef WIN32
 struct color
 {
+    virtual ~color()
+    {
+    }
+
     color()
-        :m_foreground("\033[0m")
-        ,m_background("")
-        ,m_bold("")
+        :m_foreground( "\033[0m" )
+        ,m_background( "" )
+        ,m_bold( "" )
     {
     }
 
     explicit
     color( unsigned _foreground, bool _bold = false )
-        :m_foreground("\033[0m")
-        ,m_background("")
+        :m_foreground( "\033[0m" )
+        ,m_background( "" )
         ,m_bold( _bold ? "\033[1m" : "" )
     {
         switch( _foreground )
@@ -925,8 +931,8 @@ struct color
     }
 
     color( unsigned _foreground, unsigned _background, bool _bold = false )
-        :m_foreground("")
-        ,m_background("")
+        :m_foreground( "" )
+        ,m_background( "" )
         ,m_bold( _bold ? "\033[1m" : "" )
     {
         switch( _foreground )
@@ -1006,113 +1012,132 @@ receiver<level> operator <<( const receiver<level> & _recv, const blink & )
 
 struct color
 {
-	color()
-		:m_attributes(0)
-	{
-		setForeground( white, false );
-		setBackground( black );
-	}
+    color()
+        :m_attributes( 0 )
+    {
+        setForeground( white, false );
+        setBackground( black );
+    }
 
-	explicit
-	color(unsigned _foreground, bool _bold = false)
-		:m_attributes(0)
-	{
-		setForeground( _foreground, _bold );
-	}
+    virtual ~color()
+    {
+    }
 
-	color(unsigned _foreground, unsigned _background, bool _bold = false)
-		:m_attributes(0)
-	{
-		setForeground( _foreground, _bold );
-		setBackground( _background );
-	}
+    explicit
+    color( unsigned _foreground, bool _bold = false )
+        :m_attributes( 0 )
+    {
+        setForeground( _foreground, _bold );
+    }
 
-	WORD getAttributes() const { return m_attributes; }
+    color( unsigned _foreground, unsigned _background, bool _bold = false )
+        :m_attributes( 0 )
+    {
+        setForeground( _foreground, _bold );
+        setBackground( _background );
+    }
+
+    WORD getAttributes() const { return m_attributes; }
 
 private:
-	void setForeground(unsigned _color, bool _bold)
-	{
-		switch( _color )
-		{
-		case black: m_attributes = 0; break;
-		case blue:	m_attributes = FOREGROUND_BLUE; break;
-		case green: m_attributes = FOREGROUND_GREEN; break;
-		case red:	m_attributes = FOREGROUND_RED; break;
-		case yellow: m_attributes = FOREGROUND_GREEN | FOREGROUND_RED; break;
-		case gray: m_attributes = FOREGROUND_INTENSITY; break;
-		case magenta: m_attributes = FOREGROUND_BLUE | FOREGROUND_RED; break;
+    void setForeground( unsigned _color, bool _bold )
+    {
+        switch( _color )
+        {
+        case black: m_attributes = 0; break;
+        case blue:	m_attributes = FOREGROUND_BLUE; break;
+        case green: m_attributes = FOREGROUND_GREEN; break;
+        case red:	m_attributes = FOREGROUND_RED; break;
+        case yellow: m_attributes = FOREGROUND_GREEN | FOREGROUND_RED; break;
+        case gray: m_attributes = FOREGROUND_INTENSITY; break;
+        case magenta: m_attributes = FOREGROUND_BLUE | FOREGROUND_RED; break;
+        default:
+        case white: m_attributes = FOREGROUND_BLUE | FOREGROUND_RED | FOREGROUND_GREEN; break;
+        }
 
-		default:
-		case white: m_attributes = FOREGROUND_BLUE | FOREGROUND_RED | FOREGROUND_GREEN; break;
-		}
-		if (_bold)
-			m_attributes |= FOREGROUND_INTENSITY;
-	}
+        if( _bold )
+            m_attributes |= FOREGROUND_INTENSITY;
+    }
 
-	void setBackground(unsigned _color)
-	{
-		WORD bgAttributes = 0;
-		switch(_color)
-		{
-		case white: bgAttributes |= BACKGROUND_BLUE | BACKGROUND_RED | BACKGROUND_GREEN;
-		case blue:	bgAttributes |= BACKGROUND_BLUE; break;
-		case red:	bgAttributes |= BACKGROUND_RED; break;
-		case green: bgAttributes |= BACKGROUND_GREEN; break;
-		case gray:	bgAttributes |= BACKGROUND_INTENSITY; break;
-		case yellow: bgAttributes |= BACKGROUND_GREEN | BACKGROUND_RED; break;
-		case magenta: bgAttributes |= BACKGROUND_BLUE | BACKGROUND_RED; break;
+    void setBackground( unsigned _color )
+    {
+        WORD bgAttributes = 0;
 
-		default:
-		case black: bgAttributes |= 0; break;
-		}
+        switch( _color )
+        {
+        case white: bgAttributes |= BACKGROUND_BLUE | BACKGROUND_RED | BACKGROUND_GREEN;
+        case blue:	bgAttributes |= BACKGROUND_BLUE; break;
+        case red:	bgAttributes |= BACKGROUND_RED; break;
+        case green: bgAttributes |= BACKGROUND_GREEN; break;
+        case gray:	bgAttributes |= BACKGROUND_INTENSITY; break;
+        case yellow: bgAttributes |= BACKGROUND_GREEN | BACKGROUND_RED; break;
+        case magenta: bgAttributes |= BACKGROUND_BLUE | BACKGROUND_RED; break;
 
-		m_attributes |= bgAttributes;
-	}
-	WORD m_attributes;
+        default:
+        case black: bgAttributes |= 0; break;
+        }
+
+        m_attributes |= bgAttributes;
+    }
+    WORD m_attributes;
 };
 
 template<unsigned level>
 receiver<level> operator <<( const logger<level> & _logger, const color & _color )
 {
-	assert(settings::set_text_attribute && settings::console_handle);
-	settings::set_text_attribute( settings::console_handle, _color.getAttributes() );
-    return receiver<level>( &_logger ).treat("", true);
+    //assert( settings::set_text_attribute && settings::console_handle );
+    settings::set_text_attribute( settings::console_handle, _color.getAttributes() );
+    return receiver<level>( &_logger ).treat( "", true );
 }
 
 template<unsigned level>
 receiver<level> operator <<( const receiver<level> & _recv, const color & _color )
 {
-    assert(settings::set_text_attribute && settings::console_handle);
-	settings::set_text_attribute( settings::console_handle, _color.getAttributes() );
-	return _recv.treat("", false);
+    //assert( settings::set_text_attribute && settings::console_handle );
+    settings::set_text_attribute( settings::console_handle, _color.getAttributes() );
+    return _recv.treat( "", false );
 }
 
 // -------------------------------------------------------------------------- //
 template<unsigned level>
 receiver<level> operator <<( const logger<level> & _logger, const underline & )
 {
-    return receiver<level>( &_logger ).treat("", true);
+    return receiver<level>( &_logger ).treat( "", true );
 }
 
 template<unsigned level>
 receiver<level> operator <<( const receiver<level> & _recv, const underline & )
 {
-	return _recv.treat("", false);
+    return _recv.treat( "", false );
 }
 // -------------------------------------------------------------------------- //
 template<unsigned level>
 receiver<level> operator <<( const logger<level> & _logger, const blink & )
 {
-    return receiver<level>( &_logger ).treat("", true);
+    return receiver<level>( &_logger ).treat( "", true );
 }
 
 template<unsigned level>
 receiver<level> operator <<( const receiver<level> & _recv, const blink & )
 {
-	return _recv.treat("", false);
+    return _recv.treat( "", false );
 }
 
 #endif
+
+// -------------------------------------------------------------------------- //
+struct color_decoration : public decoration, public color
+{
+    virtual void apply( std::ostream & _ostr )
+    {
+#       ifndef WIN32
+        _ostr << color::getBold() << color::getForeground() << color::getBackground();
+#       else
+        settings::set_text_attribute( settings::console_handle, color::getAttributes() );
+#       endif
+    }
+    virtual ~color_decoration() { }
+};
 
 } // namespace
 
