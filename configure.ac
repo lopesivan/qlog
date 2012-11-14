@@ -3,7 +3,7 @@ AC_INIT([qlog], 3.0, [victor.lavaud@gmail.com])
 AC_CONFIG_SRCDIR([qlog.hpp])
 AC_CONFIG_HEADERS([config.h])
 
-AM_INIT_AUTOMAKE([])
+AM_INIT_AUTOMAKE()
 AC_CONFIG_FILES([Makefile])
 
 # Checks for programs.

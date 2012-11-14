@@ -1,3 +1,6 @@
 include_HEADERS = qlog.hpp
-#noinst_PROGRAMS = unittests
-#unittests_SOURCES = unittests.cpp
+
+check_PROGRAMS = unittests
+unittests_SOURCES = unittests.cpp
+unittests_LDADD = -lUnitTest++
+TESTS = unittests

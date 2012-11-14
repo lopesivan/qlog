@@ -1,5 +1,5 @@
 #include "qlog.hpp"
-#include <UnitTest++.h>
+#include <UnitTest++/UnitTest++.h>
 #include <iostream>
 #include <fstream>
 
