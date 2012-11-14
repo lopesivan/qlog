@@ -50,7 +50,7 @@ TEST_FIXTURE( qlog_resetter, Disable )
     logger << "a b c" << '\n' << "d e f" << std::endl;
 	logger << "2";
 
-    CHECK_EQUAL( 0, output.str().size() );
+    CHECK_EQUAL( 0UL, output.str().size() );
 }
 
 
