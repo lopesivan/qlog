@@ -1,562 +1,566 @@
+#include "qlog.hpp"
 #include <UnitTest++.h>
+#include <iostream>
 #include <fstream>
-#include <iomanip>
-#if 0
-#include <thread>
-#endif
-//#include "test_with_different_preprocessor_directives.h"
-#include "qdiilog.hpp"
 
-TEST( TestVectorGeneral )
-{
-    /*
-    log_debug << "hey!" << std::endl;
-    std::vector<Logger<Loglevel::debug>*> & debugLoggers
-        = Logger<Loglevel::debug>::m_allLoggers;
-    CHECK( std::find( debugLoggers.begin(), debugLoggers.end(), &log_debug) != debugLoggers.end() );
-     */
-}
+using namespace qlog;
 
-TEST( Test0 )
+struct qlog_resetter
 {
-    std::cout << "Test 0" << std::endl;
-    Logger<Loglevel::error> logger;
+    qlog_resetter()
+    {
+        qlog::init();
+    }
+
+    virtual ~qlog_resetter()
+    {
+        qlog::destroy();
+    }
+};
+
+TEST_FIXTURE( qlog_resetter, OneString )
+{
+    std::cout << "OneString" << std::endl;
+    logger<loglevel::error> logger;
     std::ostringstream output;
-    logger.setOutput( output );
+    logger.set_output( output );
+    logger << "a b c";
 
-    logger << "bla";
-    logger << std::endl;
+    CHECK_EQUAL( "a b c", output.str() );
 }
 
-TEST( Test1 )
+TEST_FIXTURE( qlog_resetter, TwoStrings )
 {
-    std::cout << "Test 1" << std::endl;
-    const std::string message( "bla" );
-    Logger<Loglevel::error> logger;
+    std::cout << "TwoStrings" << std::endl;
+    logger<loglevel::error> logger;
+    std::ostringstream output;
+    logger.set_output( output );
+    logger << "a b c " << "1 2 3";
+
+    CHECK_EQUAL( "a b c 1 2 3", output.str() );
+}
+
+TEST_FIXTURE( qlog_resetter, Disable )
+{
+    std::cout << "Disable" << std::endl;
+    logger<loglevel::error> logger;
+    std::ostringstream output;
+    logger.set_output( output );
+	logger.disable();
+    logger << "a b c" << '\n' << "d e f" << std::endl;
+	logger << "2";
+
+    CHECK_EQUAL( 0UL, output.str().size() );
+}
+
+
+TEST_FIXTURE( qlog_resetter, CarriageReturn )
+{
+    std::cout << "CarriageReturn" << std::endl;
+    logger<loglevel::error> logger;
+    std::ostringstream output;
+    logger.set_output( output );
+    logger << "a b c\n1 2 3";
+
+    CHECK_EQUAL( "a b c\n1 2 3", output.str() );
+}
+
+TEST_FIXTURE( qlog_resetter, StdEndl )
+{
+    std::cout << "StdEndl" << std::endl;
+    logger<loglevel::error> logger;
+    std::ostringstream output;
+    logger.set_output( output );
+    logger << "a b c" << std::endl << "1 2 3";
+
+    CHECK_EQUAL( "a b c\n1 2 3", output.str() );
+}
+
+TEST_FIXTURE( qlog_resetter, ConditionalLogging )
+{
+    std::cout << "ConditionalLogging" << std::endl;
+    logger<loglevel::error> logger;
+    std::ostringstream output;
+    logger.set_output( output );
+    logger( true ) << "a b c";
+    logger( false ) << "1 2 3";
+
+    CHECK_EQUAL( "a b c", output.str() );
+}
+
+TEST_FIXTURE( qlog_resetter, Numbers )
+{
+    std::cout << "Numbers" << std::endl;
+    logger<loglevel::error> logger;
+    std::ostringstream output;
+    logger.set_output( output );
+    logger << 1L << 2 << 3UL;
+
+    CHECK_EQUAL( "123", output.str() );
+}
+
+TEST_FIXTURE( qlog_resetter, Loglevel )
+{
+    std::cout << "Loglevel" << std::endl;
+    set_loglevel( loglevel::info );
 
     {
+        logger<loglevel::error> logger;
         std::ostringstream output;
-        logger.setOutput( output );
+        logger.set_output( output );
+        logger << "a";
 
-        logger << "bla" << "blu";
-        CHECK_EQUAL( "blablu", output.str() );
+        CHECK_EQUAL( "a", output.str() );
     }
-
     {
+        logger<loglevel::warning> logger;
         std::ostringstream output;
-        logger.setOutput( output );
+        logger.set_output( output );
+        logger << "b";
 
-        logger << message.c_str();
-        CHECK_EQUAL( message, output.str() );
+        CHECK_EQUAL( "b", output.str() );
     }
-
     {
-        std::ostringstream output2;
-        logger.setOutput( output2 );
-
-        logger << message;
-        CHECK_EQUAL( message, output2.str() );
-    }
-
-}
-
-TEST( Test2 )
-{
-    const std::string message( "bla1" );
-    std::ostringstream output;
-    Logger<Loglevel::error> logger;
-    logger.setOutput( output );
-
-    logger( true ) << "bla";
-    CHECK_EQUAL( "bla", output.str() );
-
-    logger( false ) << "blu" << std::endl;
-    logger( true ) << 1;
-
-    CHECK_EQUAL( message, output.str() );
-}
-
-TEST( Test3 )
-{
-    const std::string message( "bla" );
-    std::ostringstream output;
-    Logger<Loglevel::error> logger;
-    logger.setOutput( output );
-
-    logger( true ) << "bla" << ' ' << "34";
-    logger( false ) << "blu";
-
-    CHECK_EQUAL( message + ' ' + "34" , output.str() );
-}
-
-TEST( Test4 )
-{
-    std::ostringstream output;
-    Logger<Loglevel::error> logger;
-    logger.setOutput( output );
-
-    logger( true ) << 1UL;
-    logger( false ) << 2UL;
-
-    CHECK_EQUAL( "1" , output.str() );
-}
-
-TEST( Test5  )
-{
-    std::ostringstream output;
-    Logger<Loglevel::error> logger;
-    logger.setOutput( output );
-    logger.prepend( "a" );
-
-    logger << "1" << "2" << 3;
-
-    logger.prepend("");
-    CHECK_EQUAL( "a123" , output.str() );
-}
-
-TEST( TestEndl )
-{
-    std::cout << "TestEndl\n";
-    Logger<Loglevel::warning> logger;
-    setLogLevel(Loglevel::warning);
-    {
+        logger<loglevel::info> logger;
         std::ostringstream output;
-        logger.setOutput( output );
-        logger << std::endl;
-        CHECK_EQUAL( "\n", output.str() );
-    }
+        logger.set_output( output );
+        logger << "b";
 
-    setLogLevel(Loglevel::error);
+        CHECK_EQUAL( "b", output.str() );
+    }
     {
+        logger<loglevel::trace> logger;
         std::ostringstream output;
-        logger.setOutput( output );
-        logger << std::endl;
-        logger << "something" << std::endl;
+        logger.set_output( output );
+        logger << "c";
 
-        // logger is in warning mode, so nothing should be output
-        CHECK_EQUAL (0UL, output.str().size() );
+        CHECK_EQUAL( "", output.str() );
+    }
+    {
+        logger<loglevel::debug> logger;
+        std::ostringstream output;
+        logger.set_output( output );
+        logger << "c";
+
+        CHECK_EQUAL( "", output.str() );
     }
 }
 
-TEST( TestIntermediaire )
+TEST_FIXTURE( qlog_resetter, LoglevelWithStdEndl )
 {
-    std::ostringstream output;
-    CHECK( output.rdbuf() != nullptr );
-    setOutput( output );
-    CHECK( log_debug.rdbuf() != nullptr );
-    setLogLevel( Loglevel::debug ); // in debug mode, everything is logged
-    auto && loggerIntermediaire = log_debug(true);
-    CHECK_EQUAL(loggerIntermediaire.rdbuf(), log_debug.rdbuf());
-    loggerIntermediaire << 1UL;
+    std::cout << "LoglevelWithStdEndl" << std::endl;
+    set_loglevel( loglevel::info );
 
-    CHECK_EQUAL( "1" , output.str() );
+    {
+        logger<loglevel::error> logger;
+        std::ostringstream output;
+        logger.set_output( output );
+        logger << "a" << std::endl;
+
+        CHECK_EQUAL( "a\n", output.str() );
+    }
+    {
+        logger<loglevel::warning> logger;
+        std::ostringstream output;
+        logger.set_output( output );
+        logger << "a" << std::endl;
+
+        CHECK_EQUAL( "a\n", output.str() );
+    }
+    {
+        logger<loglevel::info> logger;
+        std::ostringstream output;
+        logger.set_output( output );
+        logger << "a" << std::endl;
+
+        CHECK_EQUAL( "a\n", output.str() );
+    }
+    {
+        logger<loglevel::trace> logger;
+        std::ostringstream output;
+        logger.set_output( output );
+        logger << "a" << std::endl;
+
+        CHECK_EQUAL( "", output.str() );
+    }
+    {
+        logger<loglevel::debug> logger;
+        std::ostringstream output;
+        logger.set_output( output );
+        logger << "a" << std::endl;
+
+        CHECK_EQUAL( "", output.str() );
+    }
 }
 
-TEST( TestFilterDebug )
+TEST_FIXTURE( qlog_resetter, MultipleWritingToSingleOutput )
 {
-    // setting every output to our test stream
+    std::cout << "MultipleWritingToSingleOutput" << std::endl;
     std::ostringstream output;
-    setOutput( output );
-    setLogLevel( Loglevel::debug ); // in debug mode, everything is logged
-    log_debug( true ) << 1UL;
-    log_debug( false ) << 2UL;
-    CHECK_EQUAL( "1" , output.str() );
-
-    log_trace( true ) << 1UL;
-    log_trace( false ) << 2UL;
-    CHECK_EQUAL( "11" , output.str() );
-
-    log_warning( true ) << 1UL;
-    log_warning( false ) << 2UL;
-    CHECK_EQUAL( "111" , output.str() );
-
-    log_error( true ) << 1UL;
-    log_error( false ) << 2UL;
-    CHECK_EQUAL( "1111" , output.str() );
-
-    log_info( true ) << 1UL;
-    log_info( false ) << 2UL;
-    CHECK_EQUAL( "11111" , output.str() );
-}
-
-TEST( TestFilterTrace )
-{
-    // setting every output to our test stream
-    std::ostringstream output;
-    setOutput( output );
-
-    // in trace mode, everything but debug is logged
-    setLogLevel( Loglevel::trace );
-
-    log_debug( true ) << 1UL;
-    log_debug( false ) << 2UL;
-    CHECK_EQUAL( "" , output.str() );
-
-    log_trace( true ) << 1UL;
-    log_trace( false ) << 2UL;
-    CHECK_EQUAL( "1" , output.str() );
-
-    log_warning( true ) << 1UL;
-    log_warning( false ) << 2UL;
-    CHECK_EQUAL( "11" , output.str() );
-
-    log_error( true ) << 1UL;
-    log_error( false ) << 2UL;
-    CHECK_EQUAL( "111" , output.str() );
-
-    log_info( true ) << 1UL;
-    log_info( false ) << 2UL;
-    CHECK_EQUAL( "1111" , output.str() );
-}
-
-TEST( TestFilterInfo )
-{
-    // setting every output to our test stream
-    std::ostringstream output;
-    setOutput( output );
-
-    // in info mode, everything but debug and trace is logged
-    setLogLevel( Loglevel::info );
-
-    log_debug( true ) << 1UL;
-    log_debug( false ) << 2UL;
-    CHECK_EQUAL( "" , output.str() );
-
-    log_trace( true ) << 1UL;
-    log_trace( false ) << 2UL;
-    CHECK_EQUAL( "" , output.str() );
-
-    log_info( true ) << 1UL;
-    log_info( false ) << 2UL;
-    CHECK_EQUAL( "1" , output.str() );
-
-    log_warning( true ) << 1UL;
-    log_warning( false ) << 2UL;
-    CHECK_EQUAL( "11" , output.str() );
-
-    log_error( true ) << 1UL;
-    log_error( false ) << 2UL;
-    CHECK_EQUAL( "111" , output.str() );
-}
-
-TEST( TestFilterWarning )
-{
-    // setting every output to our test stream
-    std::ostringstream output;
-    setOutput( output );
-
-    // in warning mode, only warning and debug are logged
-    setLogLevel( Loglevel::warning );
-
-    log_debug( true ) << 1UL;
-    log_debug( false ) << 2UL;
-    CHECK_EQUAL( "" , output.str() );
-
-    log_trace( true ) << 1UL;
-    log_trace( false ) << 2UL;
-    CHECK_EQUAL( "" , output.str() );
-
-    log_info( true ) << 1UL;
-    log_info( false ) << 2UL;
-    CHECK_EQUAL( "" , output.str() );
-
-    log_warning( true ) << 1UL;
-    log_warning( false ) << 2UL;
-    CHECK_EQUAL( "1" , output.str() );
-
-    log_error( true ) << 1UL;
-    log_error( false ) << 2UL;
-    CHECK_EQUAL( "11" , output.str() );
-}
-
-TEST( TestFilterError )
-{
-    // setting every output to our test stream
-    std::ostringstream output;
-    setOutput( output );
+    set_output( output );
 
     // in error mode, only errors are logged
-    setLogLevel( Loglevel::error );
+    set_loglevel( loglevel::warning );
 
-    log_debug( true ) << 1UL;
-    log_debug( false ) << 2UL;
-    CHECK_EQUAL( "" , output.str() );
+    qlog::debug( true ) << 1UL;
+    qlog::debug( false ) << 2UL;
+    qlog::trace( true ) << 3UL;
+    qlog::trace( false ) << 4UL;
+    qlog::info( true ) << 5UL;
+    qlog::info( false ) << 6UL;
+    qlog::warning( true ) << 7UL;
+    qlog::warning( false ) << 8UL;
+    qlog::error( true ) << 9UL;
+    qlog::error( false ) << 0UL;
 
-    log_trace( true ) << 1UL;
-    log_trace( false ) << 2UL;
-    CHECK_EQUAL( "" , output.str() );
-
-    log_info( true ) << 1UL;
-    log_info( false ) << 2UL;
-    CHECK_EQUAL( "" , output.str() );
-
-    log_warning( true ) << 1UL;
-    log_warning( false ) << 2UL;
-    CHECK_EQUAL( "" , output.str() );
-
-    log_error( true ) << 1UL;
-    log_error( false ) << 2UL;
-    CHECK_EQUAL( "1" , output.str() );
+    CHECK_EQUAL(output.str(), "79");
 }
 
-TEST( TestOutputFile )
+TEST_FIXTURE( qlog_resetter, WritingToAFile )
 {
+    std::cout << "WritingToAFile" << std::endl;
     const std::string filename("tmptestfile");
     std::remove(filename.c_str());
 
     {
-        std::ofstream outputFile(filename);
-        setOutput( outputFile );
+        std::ofstream outputFile( filename.c_str() );
+        set_output( outputFile );
 
         // in error mode, only errors are logged
-        setLogLevel( Loglevel::warning );
+        set_loglevel( loglevel::warning );
 
-        log_debug( true ) << 1UL;
-        log_debug( false ) << 2UL;
-        log_trace( true ) << 1UL;
-        log_trace( false ) << 2UL;
-        log_info( true ) << 1UL;
-        log_info( false ) << 2UL;
-        log_warning( true ) << 1UL;
-        log_warning( false ) << 2UL;
-        log_error( true ) << 1UL;
-        log_error( false ) << 2UL;
+        qlog::debug( true ) << 1UL;
+        qlog::debug( false ) << 2UL;
+        qlog::trace( true ) << 3UL;
+        qlog::trace( false ) << 4UL;
+        qlog::info( true ) << 5UL;
+        qlog::info( false ) << 6UL;
+        qlog::warning( true ) << 7UL;
+        qlog::warning( false ) << 8UL;
+        qlog::error( true ) << 9UL;
+        qlog::error( false ) << 0UL;
     }
 
     {
-        std::ifstream inputFile(filename);
+        std::ifstream inputFile( filename.c_str() );
         CHECK(inputFile.good());
         int x;
         inputFile >> x;
-        CHECK_EQUAL(11,x);
+        CHECK_EQUAL(79,x);
 
         std::remove(filename.c_str());
     }
 }
 
-TEST( TestFilterInfoDecorate )
+TEST_FIXTURE( qlog_resetter, AppendOneString )
 {
+    std::cout << "AppendOneString" << std::endl;
+
     // setting every output to our test stream
     std::ostringstream output;
-    setOutput( output );
+    set_output( output );
 
-    // in info mode, everything but debug and trace is logged
-    setLogLevel( Loglevel::info );
+    set_loglevel( loglevel::debug );
+    qlog::debug.append() << "a";
 
-    log_warning.prepend( "aaa" );
-
-    log_debug( true ) << 1UL;
-    log_debug( false ) << 2UL;
-    CHECK_EQUAL( "" , output.str() );
-
-    log_trace( true ) << 1UL;
-    log_trace( false ) << 2UL;
-    CHECK_EQUAL( "" , output.str() );
-
-    log_info( true ) << 1UL;
-    log_info( false ) << 2UL;
-    CHECK_EQUAL( "1" , output.str() );
-
-    log_warning( true ) << 1UL;
-    log_warning( false ) << 2UL;
-    CHECK_EQUAL( "1aaa1" , output.str() );
-
-    log_error( true ) << 1UL;
-    log_error( false ) << 2UL;
-    CHECK_EQUAL( "1aaa11" , output.str() );
-}
-
-
-
-TEST( TestGeneralSetOutput )
-{
-    // setting every output to our test stream
-    std::ostringstream output;
-    setOutput( output );
-
-    setLogLevel( Loglevel::debug );
-
-    log_debug.prepend("");
-    log_trace.prepend("");
-    log_info.prepend("");
-    log_warning.prepend("");
-    log_error.prepend("");
-
-    log_debug << "1";
-    log_trace << "2";
-    log_info << "3";
-    log_warning << "4";
-    log_error << "5";
-
-    CHECK_EQUAL( "12345", output.str() );
-}
-
-TEST( TestDisableOutput )
-{
-    // setting every output to our test stream
-    std::ostringstream output;
-    setOutput( output );
-
-    setLogLevel( Loglevel::debug );
-
-    log_debug << "1";
-    log_trace << "2";
-    log_info << "3";
-    log_warning << "4";
-    log_error << "5";
-
-    CHECK_EQUAL( "12345", output.str() );
-
-    setLogLevel( Loglevel::disable );
-    log_debug << "1";
-    log_trace << "2";
-    log_info << "3";
-    log_warning << "4";
-    log_error << "5";
-
-    // output should be unchanged
-    CHECK_EQUAL( "12345", output.str() );
-}
-
-TEST( TestAppend )
-{
-    // setting every output to our test stream
-    std::ostringstream output;
-    setOutput( output );
-
-    setLogLevel( Loglevel::debug );
-    log_debug.append("a");
-
-    log_debug << "1";
-    log_trace << "2";
-    log_info << "3";
-    log_warning << "4";
-    log_error << "5";
+    qlog::debug << "1";
+    qlog::trace << "2";
+    qlog::info << "3";
+    qlog::warning << "4";
+    qlog::error << "5";
 
     CHECK_EQUAL( "1a2345", output.str() );
+
+    qlog::debug.append() << "";
 }
 
-TEST( TestAppend1 )
+TEST_FIXTURE( qlog_resetter, AppendTwoStrings )
 {
+    std::cout << "AppendTwoStrings" << std::endl;
     // setting every output to our test stream
     std::ostringstream output;
-    setOutput( output );
+    set_output( output );
 
-    setLogLevel( Loglevel::debug );
-    log_debug.append("a");
+    set_loglevel( loglevel::debug );
+    qlog::debug.append() << "a";
 
-    log_debug << "1" << "2";
-    log_trace << "2";
-    log_info << "3";
-    log_warning << "4";
-    log_error << "5";
+    qlog::debug << "1" << "2";
+    qlog::trace << "2";
+    qlog::info << "3";
+    qlog::warning << "4";
+    qlog::error << "5";
 
     CHECK_EQUAL( "12a2345", output.str() );
+
+    qlog::debug.append() << "";
 }
 
-TEST( TestAppend2 )
+TEST_FIXTURE( qlog_resetter, AppendTwoStringsAndEndl  )
 {
+    std::cout << "AppendTwoStringsAndEndl" << std::endl;
+
     // setting every output to our test stream
     std::ostringstream output;
-    setOutput( output );
+    set_output( output );
 
-    setLogLevel( Loglevel::debug );
-    log_debug.append("a");
-    log_trace.append("b");
+    set_loglevel( loglevel::debug );
+    qlog::debug.append() << "a";
+    qlog::trace.append() << "b";
 
-    log_debug << "1" << "2" << std::endl;
-    log_trace << "2";
-    log_info << "3";
-    log_warning << "4";
-    log_error << "5";
+    qlog::debug << "1" << "2" << std::endl;
+    qlog::trace << "2";
+    qlog::info << "3";
+    qlog::warning << "4";
+    qlog::error << "5";
 
     CHECK_EQUAL( "12\na2b345", output.str() );
+
+    qlog::debug.append() << "";
+    qlog::trace.append() << "";
 }
 
-TEST( TestQdiiFlavour )
+TEST_FIXTURE( qlog_resetter, AppendEndl )
 {
-    // setting every output to our test stream
+    std::cout << "AppendEndl" << std::endl;
+    logger<loglevel::error> logger;
     std::ostringstream output;
-    setOutput( output );
+    logger.set_output( output );
+    logger.append() << "a";
 
-    setLogLevel( Loglevel::debug ); // in debug mode, everything is logged
-    setPrependTextQdiiFlavour();
+    logger << std::endl;
 
-    log_debug( true ) << 1UL;
-    log_debug( false ) << 2UL;
-    CHECK_EQUAL( "1" , output.str() );
-
-    log_trace( true ) << 1UL;
-    log_trace( false ) << 2UL;
-    CHECK_EQUAL( "11" , output.str() );
-
-    log_info( true ) << 1UL;
-    log_info( false ) << 2UL;
-    CHECK_EQUAL( "11[..] 1" , output.str() );
-
-    log_warning( true ) << 1UL;
-    log_warning( false ) << 2UL;
-    CHECK_EQUAL( "11[..] 1[ww] 1" , output.str() );
-
-    log_error( true ) << 1UL;
-    log_error( false ) << 2UL;
-    CHECK_EQUAL( "11[..] 1[ww] 1[EE] 1" , output.str() );
+    CHECK_EQUAL( "\na", output.str() );
 }
 
-TEST( TestQdiiFlavourBashColour )
+TEST_FIXTURE( qlog_resetter, PrependOneString )
 {
-    // setting every output to our test stream
+    std::cout << "PrependOneString" << std::endl;
+    logger<loglevel::error> logger;
     std::ostringstream output;
-    setOutput( output );
-    setLogLevel( Loglevel::error ); // in debug mode, everything is logged
-    setPrependedTextQdiiFlavourBashColors();
+    logger.set_output( output );
+    logger.prepend() << "a";
 
-    log_error << "a";
+    logger << "1";
 
-    const std::string res = std::string( "[" ) + setBashColor( RED ) + "EE" +
-        setBashColor( NONE ) + "]" + setBashColor( NONE, NONE, true ) + " a"
-        + setBashColor( NONE, NONE, false );
-
-    CHECK_EQUAL( res, output.str() );
+    CHECK_EQUAL( "a1", output.str() );
 }
 
-#if 0
-TEST( TestMultiThreading )
+TEST_FIXTURE( qlog_resetter, PrependTwoStrings )
 {
-    setLogLevel(Loglevel::error);
+    std::cout << "PrependTwoStrings" << std::endl;
+    logger<loglevel::error> logger;
     std::ostringstream output;
-    setOutput(output);
+    logger.set_output( output );
+    logger.prepend() << "a";
 
-    static int threadNumber = 0;
-    struct ThreadOutput
-    {
-        ThreadOutput()
-            :m_number(threadNumber++)
-            {
-            }
-        void operator()()
-        {
-            int i = 0;
-            while (i++<100)
-                log_debug << m_number << m_number << m_number
-                          << m_number << m_number << m_number
-                          << m_number << m_number << m_number
-                          << m_number << m_number << m_number
-                          << m_number << m_number << m_number
-                          << m_number << m_number << m_number
-                          << m_number << m_number << m_number << '\n';
-        }
-    private:
-        int m_number;
-    } thread1, thread2;
+    logger << "1" << "2";
 
-    std::thread thr1(thread1);
-    std::thread thr2(thread2);
-
-    thr1.join();
-    thr2.join();
+    CHECK_EQUAL( "a12", output.str() );
 }
-#endif
+TEST_FIXTURE( qlog_resetter, PrependTwoStringsAndEndl )
+{
+    std::cout << "PrependTwoStringsAndEndl" << std::endl;
+    logger<loglevel::error> logger;
+    std::ostringstream output;
+    logger.set_output( output );
+    logger.prepend() << "a";
+
+    logger << "1" << "2" << std::endl;
+
+    CHECK_EQUAL( "a12\n", output.str() );
+}
+
+TEST_FIXTURE( qlog_resetter, PrependEndl )
+{
+    std::cout << "PrependOneString" << std::endl;
+    logger<loglevel::error> logger;
+    std::ostringstream output;
+    logger.set_output( output );
+    logger.prepend() << "a";
+    logger << std::endl;
+
+    CHECK_EQUAL( "a\n", output.str() );
+}
+
+TEST_FIXTURE( qlog_resetter, Colors )
+{
+    std::cout << "Colors" << std::endl;
+
+
+    logger<loglevel::error> logger;
+    logger.set_output( std::cout );
+	logger << color() << "This line should not have special colors\n";
+    logger << color(green) << "This line should be green on black\n";
+	logger << color(red) << "This line should be red on black\n";
+	logger << color(blue) << "This line should be blue on black\n";
+	logger << color(green, true) << "This line should be bold green on black" << color() << '\n';
+	logger << color(yellow) << "This line should be yellow on black\n";
+	logger << color(yellow, true) << "This line should be bold yellow on black\n";
+	logger << color(red, true) << "This line should be bold red on black" << color() << '\n';
+	logger << color(blue, true) << "This line should be bold blue on black" << color() << '\n';
+	logger << color(green, red) << "This line should be green on red" << color() << '\n';
+	logger << color(blue, red) << "This line should be blue on red" << color() << '\n';
+	logger << color(red, green) << "This line should be red on green" << color() << '\n';
+	logger << color(red, blue) << "This line should be red on blue" << color() << '\n';
+    logger << "This " << underline() << "word" << color() << " should be underlined" << '\n';
+    logger << "This " << blink() << "word" << color() << " should be blinking" << '\n';
+	logger << underline() << "These words" << color() << " should be underlined" << '\n';
+    logger << blink() << "These words" << color() << " should be blinking" << '\n';
+	logger << "This " << color(blue, red) << "word" << color() << " should be blue on red\n";
+	logger << "This " << color(green, blue, true) << "word" << color() << " should be bold green on blue\n";
+
+
+}
+
+TEST_FIXTURE( qlog_resetter, ColorAppend )
+{
+    std::cout << "ColorAppend" << std::endl;
+
+    set_loglevel( loglevel::warning );
+    logger<loglevel::error> logger_without_append;
+	logger<loglevel::warning> logger_with_append;
+
+	std::ostringstream output_witout_append;
+	std::ostringstream output_with_append;
+
+	logger_with_append.set_output(output_with_append);
+	logger_without_append.set_output(output_witout_append);
+
+	logger_with_append.append() << "z";
+
+	logger_with_append << "a" << color(green) << "b";
+	logger_without_append << "a" << color(green) << "b";
+
+	logger_without_append << "z";
+
+    CHECK_EQUAL( output_witout_append.str(), output_with_append.str() );
+	logger_without_append << color(); // hack to restore color on windows
+
+}
+
+TEST_FIXTURE( qlog_resetter, ColorPrepend )
+{
+    std::cout << "ColorPrepend" << std::endl;
+
+    set_loglevel( loglevel::warning );
+    logger<loglevel::error> logger_without_prepend;
+	logger<loglevel::warning> logger_with_prepend;
+
+	std::ostringstream output_witout_append;
+	std::ostringstream output_with_append;
+
+	logger_with_prepend.set_output(output_with_append);
+	logger_without_prepend.set_output(output_witout_append);
+
+	logger_with_prepend.prepend() << "z";
+
+	logger_with_prepend << color(green) << "b";
+	logger_without_prepend << "z" << color(green) << "b";
+
+	CHECK_EQUAL(output_witout_append.str(), output_with_append.str());
+    logger_without_prepend << color(); // hack to restore color on windows
+}
+
+TEST_FIXTURE( qlog_resetter, BlinkPrepend )
+{
+    std::cout << "BlinkPrepend" << std::endl;
+
+    set_loglevel( loglevel::warning );
+    logger<loglevel::error> logger_without_prepend;
+	logger<loglevel::warning> logger_with_prepend;
+
+	std::ostringstream output_witout_append;
+	std::ostringstream output_with_append;
+
+	logger_with_prepend.set_output(output_with_append);
+	logger_without_prepend.set_output(output_witout_append);
+
+	logger_with_prepend.prepend() << "z";
+
+	logger_with_prepend << blink() << "b";
+	logger_without_prepend << "z" << blink() << "b";
+
+	CHECK_EQUAL(output_witout_append.str(), output_with_append.str());
+
+
+}
+
+TEST_FIXTURE( qlog_resetter, UnderlinePrepend )
+{
+    std::cout << "UnderlinePrepend" << std::endl;
+
+    set_loglevel( loglevel::warning );
+    logger<loglevel::error> logger_without_prepend;
+	logger<loglevel::warning> logger_with_prepend;
+
+	std::ostringstream output_witout_append;
+	std::ostringstream output_with_append;
+
+	logger_with_prepend.set_output(output_with_append);
+	logger_without_prepend.set_output(output_witout_append);
+
+	logger_with_prepend.prepend() << "z";
+
+	logger_with_prepend << underline() << "b";
+	logger_without_prepend << "z" << underline() << "b";
+
+	CHECK_EQUAL(output_witout_append.str(), output_with_append.str());
+
+
+}
+
+TEST_FIXTURE( qlog_resetter, BlinkAppend )
+{
+    std::cout << "BlinkAppend" << std::endl;
+
+    set_loglevel( loglevel::warning );
+    logger<loglevel::error> logger_without_append;
+	logger<loglevel::warning> logger_with_append;
+
+	std::ostringstream output_witout_append;
+	std::ostringstream output_with_append;
+
+	logger_with_append.set_output(output_with_append);
+	logger_without_append.set_output(output_witout_append);
+
+	logger_with_append.append() << "z";
+
+	logger_with_append << "a" << blink() << "b";
+	logger_without_append << "a" << blink() << "b";
+
+	logger_without_append << "z";
+
+	CHECK_EQUAL(output_witout_append.str(), output_with_append.str());
+	logger_without_append << color(); // hack to restore color on cmd
+
+
+}
+
+TEST_FIXTURE( qlog_resetter, UnderlineAppend )
+{
+    std::cout << "UnderlineAppend" << std::endl;
+
+    set_loglevel( loglevel::warning );
+    logger<loglevel::error> logger_without_append;
+	logger<loglevel::warning> logger_with_append;
+
+	std::ostringstream output_witout_append;
+	std::ostringstream output_with_append;
+
+	logger_with_append.set_output(output_with_append);
+	logger_without_append.set_output(output_witout_append);
+
+	logger_with_append.append() << "z";
+
+	logger_with_append << "a" << underline() << "b";
+	logger_without_append << "a" << underline() << "b";
+
+	logger_without_append << "z";
+
+	CHECK_EQUAL(output_witout_append.str(), output_with_append.str());
+	logger_without_append << color(); // hack to restore color on cmd
+}
+
 int main( int , char ** )
 {
     return UnitTest::RunAllTests();
