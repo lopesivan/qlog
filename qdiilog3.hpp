@@ -375,7 +375,9 @@ unsigned get_loglevel()
 }
 
 // -------------------------------------------------------------------------- //
-
+/**@struct decoration
+ * @cond GENERATE_INTERNAL_DOCUMENTATION
+ */
 struct decoration
 {
     virtual ~decoration() { }
@@ -443,6 +445,7 @@ decorater & operator << (decorater & _dec, const char * _txt)
     _dec.add_decoration( new text_decoration(_txt) );
     return _dec;
 }
+/**@endcond */
 
 // -------------------------------------------------------------------------- //
 /**@struct logger
@@ -1132,6 +1135,9 @@ receiver<level> operator <<( const receiver<level> & _recv, const blink & )
 #endif
 
 // -------------------------------------------------------------------------- //
+/**@struct color_decoration
+ * @cond GENERATE_INTERNAL_DOCUMENTATION
+ */
 struct color_decoration : public decoration, public color
 {
     virtual void apply( std::ostream & _ostr )
@@ -1144,6 +1150,8 @@ struct color_decoration : public decoration, public color
     }
     virtual ~color_decoration() { }
 };
+
+/**@endcond */
 
 } // namespace
 
