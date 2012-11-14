@@ -392,6 +392,17 @@ struct text_decoration : public decoration
     {
     }
 
+    text_decoration( text_decoration& _copy )
+        :m_txt( _copy.m_txt )
+    {
+    }
+
+    text_decoration& operator=( text_decoration & _obj )
+    {
+        m_txt = _obj.m_txt;
+        return *this;
+    }
+
     virtual void apply( std::ostream & _ostr )
     {
         if( m_txt )
@@ -920,6 +931,21 @@ struct color
     {
     }
 
+    color( const color & _copy )
+        :m_foreground( _copy.m_foreground )
+        ,m_background( _copy.m_background )
+        ,m_bold( _copy.m_bold )
+    {
+    }
+
+    color& operator=( const color & _copy )
+    {
+        m_foreground =_copy.m_foreground;
+        m_background = _copy.m_background;
+        m_bold = _copy.m_bold;
+
+        return *this;
+    }
     explicit
     color( unsigned _foreground, bool _bold = false )
         :m_foreground( "\033[0m" )
