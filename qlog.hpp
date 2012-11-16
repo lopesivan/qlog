@@ -340,27 +340,36 @@ struct user_global_settings
 
 /**@private
   *@brief The current level of logging */
-template<>
-unsigned user_global_settings<int>::loglevel = loglevel::error;
+template<typename T>
+unsigned user_global_settings<T>::loglevel = loglevel::error;
 
 /**@private
   *@brief Whether the library is initialized */
-template<>
-bool user_global_settings<int>::initialized = false;
+template<typename T>
+bool user_global_settings<T>::initialized = false;
 
 #ifdef WIN32
 /**@private
   *@brief A handle to the console */
-template<>
-HANDLE user_global_settings<int>::console_handle = INVALID_HANDLE_VALUE;
+template<typename T>
+HANDLE user_global_settings<T>::console_handle = INVALID_HANDLE_VALUE;
 
 /**@private
   *@brief A function pointer a function that will set console attributes */
-template<>
-console_function user_global_settings<int>::set_text_attribute = 0;
+template<typename T>
+console_function user_global_settings<T>::set_text_attribute = 0;
 #endif
 
 typedef user_global_settings<int> settings;
+
+#ifdef __GNUC__
+#   define QLOG_SUPPRESS_NOT_USED_WARN __attribute__ ((unused))
+#else
+#   define QLOG_SUPPRESS_NOT_USED_WARN
+#endif
+
+static QLOG_SUPPRESS_NOT_USED_WARN void set_loglevel(unsigned);
+static QLOG_SUPPRESS_NOT_USED_WARN unsigned get_loglevel();
 
 static
 void set_loglevel( unsigned level )
@@ -368,7 +377,7 @@ void set_loglevel( unsigned level )
     settings::loglevel = level;
 }
 
-static
+inline
 unsigned get_loglevel()
 {
     return settings::loglevel;
@@ -451,6 +460,8 @@ struct decorater
     decoration * m_list[10];
 };
 
+// -------------------------------------------------------------------------- //
+inline
 decorater & operator << (decorater & _dec, const char * _txt)
 {
     _dec.add_decoration( new text_decoration(_txt) );
@@ -1164,19 +1175,34 @@ receiver<level> operator <<( const receiver<level> & _recv, const blink & )
 /**@struct color_decoration
  * @cond GENERATE_INTERNAL_DOCUMENTATION
  */
-struct color_decoration : public decoration, public color
+struct color_decoration : public decoration
 {
+    color_decoration( const color & _color )
+        :m_color(_color)
+    {
+    }
+
     virtual void apply( std::ostream & _ostr )
     {
 #       ifndef WIN32
-        _ostr << color::getBold() << color::getForeground() << color::getBackground();
+        _ostr << m_color.getBold() << m_color.getForeground() << m_color.getBackground();
 #       else
-        settings::set_text_attribute( settings::console_handle, color::getAttributes() );
+        settings::set_text_attribute( settings::console_handle, m_color.getAttributes() );
 #       endif
     }
     virtual ~color_decoration() { }
+
+private:
+    const color & m_color;
 };
 
+// -------------------------------------------------------------------------- //
+inline
+decorater & operator<< ( decorater & _dec, const color & _color )
+{
+    _dec.add_decoration( new color_decoration(_color) );
+    return _dec;
+}
 /**@endcond */
 
 } // namespace
