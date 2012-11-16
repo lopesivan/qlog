@@ -561,6 +561,40 @@ TEST_FIXTURE( qlog_resetter, UnderlineAppend )
 	logger_without_append << color(); // hack to restore color on cmd
 }
 
+TEST_FIXTURE( qlog_resetter, LoggingDisabled )
+{
+    std::cout << "LoggingDisabled" << std::endl;
+
+    set_loglevel( loglevel::disabled );
+
+    std::ostringstream ostr ;
+    set_output( ostr );
+
+    qlog::warning << "a" << '\n' << std::endl;
+    qlog::error << "a" << '\n' << std::endl;
+    qlog::trace << "a" << '\n' << std::endl;
+    qlog::info << "a" << '\n' << std::endl;
+    qlog::debug << "a" << '\n' << std::endl;
+
+    CHECK_EQUAL( 0, ostr.str().size() );
+}
+
+TEST_FIXTURE( qlog_resetter, LoggingDisabledWithPrefixAndSuffixes )
+{
+    std::cout << "LoggingDisabledWithPrefixAndSuffixes" << std::endl;
+
+    set_loglevel( loglevel::disabled );
+
+    std::ostringstream ostr ;
+    set_output( ostr );
+
+    qlog::warning.prepend() << "a" << color(green);
+    qlog::warning.append() << "b" << color();
+    qlog::warning << "a" << '\n' << std::endl;
+
+    CHECK_EQUAL( 0, ostr.str().size() );
+}
+
 int main( int , char ** )
 {
     return UnitTest::RunAllTests();

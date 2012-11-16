@@ -99,12 +99,12 @@
  * - loglevel::info
  * - loglevel::warning
  * - loglevel::error
- * - loglevel::disable
+ * - loglevel::disabled
  *
  * If you call <c>set_loglevel( loglevel::warning )</c>, only the error and warning
  * messages will be processed, the more detailed messages will be ignored.
  *
- * The special log level <c>loglevel::disable</c> will disable all output. No
+ * The special log level <c>loglevel::disabled</c> will disable all output. No
  * messages will be written after this has been set.
  *
  * PREPENDING YOUR MESSAGES WITH SOME CUSTOM TEXT
@@ -280,7 +280,7 @@ namespace qlog
 
 namespace loglevel
 {
-static const unsigned disabled = 0;
+static const unsigned disabled = 10;
 
 static const unsigned debug = 1;
 static const unsigned trace = 2;
