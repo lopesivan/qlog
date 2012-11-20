@@ -273,6 +273,10 @@
 #	include <windows.h>
 #endif
 
+#ifndef QLOG_MAX_DECORATIONS
+#   define QLOG_MAX_DECORATIONS 10
+#endif
+
 // hide symbols on linux
 #if __GNUC__ >= 4
 #   pragma GCC visibility push(hidden)
@@ -455,7 +459,7 @@ struct decorater
     void add_decoration( decoration * _deco )
     {
         QLOG_ASSERT( _deco );
-        QLOG_ASSERT( m_last_index < 10 );
+        QLOG_ASSERT( m_last_index < QLOG_MAX_DECORATIONS );
         if ( _deco )
         {
             try
@@ -491,7 +495,7 @@ struct decorater
         m_last_index = 0;
     }
     mutable size_t m_last_index;
-    decoration * m_list[10];
+    decoration * m_list[QLOG_MAX_DECORATIONS];
 };
 
 // -------------------------------------------------------------------------- //
