@@ -2,6 +2,9 @@
 #include <UnitTest++/UnitTest++.h>
 #include <iostream>
 #include <fstream>
+#ifndef WIN32
+#   include <sys/resource.h>
+#endif
 
 using namespace qlog;
 
@@ -46,9 +49,9 @@ TEST_FIXTURE( qlog_resetter, Disable )
     logger<loglevel::error> logger;
     std::ostringstream output;
     logger.set_output( output );
-	logger.disable();
+    logger.disable();
     logger << "a b c" << '\n' << "d e f" << std::endl;
-	logger << "2";
+    logger << "2";
 
     CHECK_EQUAL( 0UL, output.str().size() );
 }
@@ -213,14 +216,14 @@ TEST_FIXTURE( qlog_resetter, MultipleWritingToSingleOutput )
     qlog::error( true ) << 9UL;
     qlog::error( false ) << 0UL;
 
-    CHECK_EQUAL(output.str(), "79");
+    CHECK_EQUAL( output.str(), "79" );
 }
 
 TEST_FIXTURE( qlog_resetter, WritingToAFile )
 {
     std::cout << "WritingToAFile" << std::endl;
-    const std::string filename("tmptestfile");
-    std::remove(filename.c_str());
+    const std::string filename( "tmptestfile" );
+    std::remove( filename.c_str() );
 
     {
         std::ofstream outputFile( filename.c_str() );
@@ -243,12 +246,12 @@ TEST_FIXTURE( qlog_resetter, WritingToAFile )
 
     {
         std::ifstream inputFile( filename.c_str() );
-        CHECK(inputFile.good());
+        CHECK( inputFile.good() );
         int x;
         inputFile >> x;
-        CHECK_EQUAL(79,x);
+        CHECK_EQUAL( 79,x );
 
-        std::remove(filename.c_str());
+        std::remove( filename.c_str() );
     }
 }
 
@@ -295,7 +298,7 @@ TEST_FIXTURE( qlog_resetter, AppendTwoStrings )
     qlog::debug.append() << "";
 }
 
-TEST_FIXTURE( qlog_resetter, AppendTwoStringsAndEndl  )
+TEST_FIXTURE( qlog_resetter, AppendTwoStringsAndEndl )
 {
     std::cout << "AppendTwoStringsAndEndl" << std::endl;
 
@@ -389,25 +392,25 @@ TEST_FIXTURE( qlog_resetter, Colors )
 
     logger<loglevel::error> logger;
     logger.set_output( std::cout );
-	logger << color() << "This line should not have special colors\n";
-    logger << color(green) << "This line should be green on black\n";
-	logger << color(red) << "This line should be red on black\n";
-	logger << color(blue) << "This line should be blue on black\n";
-	logger << color(green, true) << "This line should be bold green on black" << color() << '\n';
-	logger << color(yellow) << "This line should be yellow on black\n";
-	logger << color(yellow, true) << "This line should be bold yellow on black\n";
-	logger << color(red, true) << "This line should be bold red on black" << color() << '\n';
-	logger << color(blue, true) << "This line should be bold blue on black" << color() << '\n';
-	logger << color(green, red) << "This line should be green on red" << color() << '\n';
-	logger << color(blue, red) << "This line should be blue on red" << color() << '\n';
-	logger << color(red, green) << "This line should be red on green" << color() << '\n';
-	logger << color(red, blue) << "This line should be red on blue" << color() << '\n';
+    logger << color() << "This line should not have special colors\n";
+    logger << color( green ) << "This line should be green on black\n";
+    logger << color( red ) << "This line should be red on black\n";
+    logger << color( blue ) << "This line should be blue on black\n";
+    logger << color( green, true ) << "This line should be bold green on black" << color() << '\n';
+    logger << color( yellow ) << "This line should be yellow on black\n";
+    logger << color( yellow, true ) << "This line should be bold yellow on black\n";
+    logger << color( red, true ) << "This line should be bold red on black" << color() << '\n';
+    logger << color( blue, true ) << "This line should be bold blue on black" << color() << '\n';
+    logger << color( green, red ) << "This line should be green on red" << color() << '\n';
+    logger << color( blue, red ) << "This line should be blue on red" << color() << '\n';
+    logger << color( red, green ) << "This line should be red on green" << color() << '\n';
+    logger << color( red, blue ) << "This line should be red on blue" << color() << '\n';
     logger << "This " << underline() << "word" << color() << " should be underlined" << '\n';
     logger << "This " << blink() << "word" << color() << " should be blinking" << '\n';
-	logger << underline() << "These words" << color() << " should be underlined" << '\n';
+    logger << underline() << "These words" << color() << " should be underlined" << '\n';
     logger << blink() << "These words" << color() << " should be blinking" << '\n';
-	logger << "This " << color(blue, red) << "word" << color() << " should be blue on red\n";
-	logger << "This " << color(green, blue, true) << "word" << color() << " should be bold green on blue\n";
+    logger << "This " << color( blue, red ) << "word" << color() << " should be blue on red\n";
+    logger << "This " << color( green, blue, true ) << "word" << color() << " should be bold green on blue\n";
 
 
 }
@@ -418,23 +421,23 @@ TEST_FIXTURE( qlog_resetter, ColorAppend )
 
     set_loglevel( loglevel::warning );
     logger<loglevel::error> logger_without_append;
-	logger<loglevel::warning> logger_with_append;
+    logger<loglevel::warning> logger_with_append;
 
-	std::ostringstream output_witout_append;
-	std::ostringstream output_with_append;
+    std::ostringstream output_witout_append;
+    std::ostringstream output_with_append;
 
-	logger_with_append.set_output(output_with_append);
-	logger_without_append.set_output(output_witout_append);
+    logger_with_append.set_output( output_with_append );
+    logger_without_append.set_output( output_witout_append );
 
-	logger_with_append.append() << "z";
+    logger_with_append.append() << "z";
 
-	logger_with_append << "a" << color(green) << "b";
-	logger_without_append << "a" << color(green) << "b";
+    logger_with_append << "a" << color( green ) << "b";
+    logger_without_append << "a" << color( green ) << "b";
 
-	logger_without_append << "z";
+    logger_without_append << "z";
 
     CHECK_EQUAL( output_witout_append.str(), output_with_append.str() );
-	logger_without_append << color(); // hack to restore color on windows
+    logger_without_append << color(); // hack to restore color on windows
 
 }
 
@@ -444,20 +447,20 @@ TEST_FIXTURE( qlog_resetter, ColorPrepend )
 
     set_loglevel( loglevel::warning );
     logger<loglevel::error> logger_without_prepend;
-	logger<loglevel::warning> logger_with_prepend;
+    logger<loglevel::warning> logger_with_prepend;
 
-	std::ostringstream output_witout_append;
-	std::ostringstream output_with_append;
+    std::ostringstream output_witout_append;
+    std::ostringstream output_with_append;
 
-	logger_with_prepend.set_output(output_with_append);
-	logger_without_prepend.set_output(output_witout_append);
+    logger_with_prepend.set_output( output_with_append );
+    logger_without_prepend.set_output( output_witout_append );
 
-	logger_with_prepend.prepend() << "z";
+    logger_with_prepend.prepend() << "z";
 
-	logger_with_prepend << color(green) << "b";
-	logger_without_prepend << "z" << color(green) << "b";
+    logger_with_prepend << color( green ) << "b";
+    logger_without_prepend << "z" << color( green ) << "b";
 
-	CHECK_EQUAL(output_witout_append.str(), output_with_append.str());
+    CHECK_EQUAL( output_witout_append.str(), output_with_append.str() );
     logger_without_prepend << color(); // hack to restore color on windows
 }
 
@@ -467,20 +470,20 @@ TEST_FIXTURE( qlog_resetter, BlinkPrepend )
 
     set_loglevel( loglevel::warning );
     logger<loglevel::error> logger_without_prepend;
-	logger<loglevel::warning> logger_with_prepend;
+    logger<loglevel::warning> logger_with_prepend;
 
-	std::ostringstream output_witout_append;
-	std::ostringstream output_with_append;
+    std::ostringstream output_witout_append;
+    std::ostringstream output_with_append;
 
-	logger_with_prepend.set_output(output_with_append);
-	logger_without_prepend.set_output(output_witout_append);
+    logger_with_prepend.set_output( output_with_append );
+    logger_without_prepend.set_output( output_witout_append );
 
-	logger_with_prepend.prepend() << "z";
+    logger_with_prepend.prepend() << "z";
 
-	logger_with_prepend << blink() << "b";
-	logger_without_prepend << "z" << blink() << "b";
+    logger_with_prepend << blink() << "b";
+    logger_without_prepend << "z" << blink() << "b";
 
-	CHECK_EQUAL(output_witout_append.str(), output_with_append.str());
+    CHECK_EQUAL( output_witout_append.str(), output_with_append.str() );
 
 
 }
@@ -491,20 +494,20 @@ TEST_FIXTURE( qlog_resetter, UnderlinePrepend )
 
     set_loglevel( loglevel::warning );
     logger<loglevel::error> logger_without_prepend;
-	logger<loglevel::warning> logger_with_prepend;
+    logger<loglevel::warning> logger_with_prepend;
 
-	std::ostringstream output_witout_append;
-	std::ostringstream output_with_append;
+    std::ostringstream output_witout_append;
+    std::ostringstream output_with_append;
 
-	logger_with_prepend.set_output(output_with_append);
-	logger_without_prepend.set_output(output_witout_append);
+    logger_with_prepend.set_output( output_with_append );
+    logger_without_prepend.set_output( output_witout_append );
 
-	logger_with_prepend.prepend() << "z";
+    logger_with_prepend.prepend() << "z";
 
-	logger_with_prepend << underline() << "b";
-	logger_without_prepend << "z" << underline() << "b";
+    logger_with_prepend << underline() << "b";
+    logger_without_prepend << "z" << underline() << "b";
 
-	CHECK_EQUAL(output_witout_append.str(), output_with_append.str());
+    CHECK_EQUAL( output_witout_append.str(), output_with_append.str() );
 
 
 }
@@ -515,23 +518,23 @@ TEST_FIXTURE( qlog_resetter, BlinkAppend )
 
     set_loglevel( loglevel::warning );
     logger<loglevel::error> logger_without_append;
-	logger<loglevel::warning> logger_with_append;
+    logger<loglevel::warning> logger_with_append;
 
-	std::ostringstream output_witout_append;
-	std::ostringstream output_with_append;
+    std::ostringstream output_witout_append;
+    std::ostringstream output_with_append;
 
-	logger_with_append.set_output(output_with_append);
-	logger_without_append.set_output(output_witout_append);
+    logger_with_append.set_output( output_with_append );
+    logger_without_append.set_output( output_witout_append );
 
-	logger_with_append.append() << "z";
+    logger_with_append.append() << "z";
 
-	logger_with_append << "a" << blink() << "b";
-	logger_without_append << "a" << blink() << "b";
+    logger_with_append << "a" << blink() << "b";
+    logger_without_append << "a" << blink() << "b";
 
-	logger_without_append << "z";
+    logger_without_append << "z";
 
-	CHECK_EQUAL(output_witout_append.str(), output_with_append.str());
-	logger_without_append << color(); // hack to restore color on cmd
+    CHECK_EQUAL( output_witout_append.str(), output_with_append.str() );
+    logger_without_append << color(); // hack to restore color on cmd
 
 
 }
@@ -542,23 +545,23 @@ TEST_FIXTURE( qlog_resetter, UnderlineAppend )
 
     set_loglevel( loglevel::warning );
     logger<loglevel::error> logger_without_append;
-	logger<loglevel::warning> logger_with_append;
+    logger<loglevel::warning> logger_with_append;
 
-	std::ostringstream output_witout_append;
-	std::ostringstream output_with_append;
+    std::ostringstream output_witout_append;
+    std::ostringstream output_with_append;
 
-	logger_with_append.set_output(output_with_append);
-	logger_without_append.set_output(output_witout_append);
+    logger_with_append.set_output( output_with_append );
+    logger_without_append.set_output( output_witout_append );
 
-	logger_with_append.append() << "z";
+    logger_with_append.append() << "z";
 
-	logger_with_append << "a" << underline() << "b";
-	logger_without_append << "a" << underline() << "b";
+    logger_with_append << "a" << underline() << "b";
+    logger_without_append << "a" << underline() << "b";
 
-	logger_without_append << "z";
+    logger_without_append << "z";
 
-	CHECK_EQUAL(output_witout_append.str(), output_with_append.str());
-	logger_without_append << color(); // hack to restore color on cmd
+    CHECK_EQUAL( output_witout_append.str(), output_with_append.str() );
+    logger_without_append << color(); // hack to restore color on cmd
 }
 
 TEST_FIXTURE( qlog_resetter, LoggingDisabled )
@@ -588,13 +591,55 @@ TEST_FIXTURE( qlog_resetter, LoggingDisabledWithPrefixAndSuffixes )
     std::ostringstream ostr ;
     set_output( ostr );
 
-    qlog::warning.prepend() << "a" << color(green);
+    qlog::warning.prepend() << "a" << color( green );
     qlog::warning.append() << "b" << color();
     qlog::warning << "a" << '\n' << std::endl;
 
     CHECK_EQUAL( 0, ostr.str().size() );
 }
 
+#ifndef WIN32
+TEST_FIXTURE( qlog_resetter, ExceptionSafety )
+{
+    std::cout << "ExceptionSafety" << std::endl;
+
+    std::ostringstream ostr;
+
+    set_loglevel( loglevel::warning );
+    set_output( ostr );
+
+    struct rlimit lim;
+    getrlimit( RLIMIT_AS, &lim );
+    lim.rlim_cur = 0;
+    const int res = setrlimit( RLIMIT_AS, &lim );
+    std::cout << "limit = " << lim.rlim_cur << '\n';
+    CHECK_EQUAL( 0, res );
+
+    try
+    {
+        qlog::error.prepend() << color( green ) << "a" << "b" << color( gray ) << color( white ) << "c" << color( black ) << "d" << color();
+        qlog::error.append() << color( green ) << "a" << "b" << color( gray ) << color( white ) << "c" << color( black ) << "d" << color();
+        qlog::debug.prepend() << color( green ) << "a" << "b" << color( gray ) << color( white ) << "c" << color( black ) << "d" << color();
+        qlog::debug.append() << color( green ) << "a" << "b" << color( gray ) << color( white ) << "c" << color( black ) << "d" << color();
+        qlog::trace.prepend() << color( green ) << "a" << "b" << color( gray ) << color( white ) << "c" << color( black ) << "d" << color();
+        qlog::trace.append() << color( green ) << "a" << "b" << color( gray ) << color( white ) << "c" << color( black ) << "d" << color();
+
+        qlog::info.prepend() << color( green ) << "a" << "b" << color( gray ) << color( white ) << "c" << color( black ) << "d" << color();
+        qlog::info.append() << color( green ) << "a" << "b" << color( gray ) << color( white ) << "c" << color( black ) << "d" << color();
+
+        qlog::warning.prepend() << color( green ) << "a" << "b" << color( gray ) << color( white ) << "c" << color( black ) << "d" << color();
+        qlog::warning.append() << color( green ) << "a" << "b" << color( gray ) << color( white ) << "c" << color( black ) << "d" << color();
+
+        qlog::warning << "abc" << std::endl;
+
+    }
+    catch ( std::exception & )
+    {
+        CHECK_EQUAL( 0, 1 );
+    }
+}
+
+#endif
 int main( int , char ** )
 {
     return UnitTest::RunAllTests();

@@ -12,6 +12,14 @@
  * even though some decorative features might be silently turned off when
  * unavailable on either platform.
  *
+ * - C++03 fully compatible.
+ * - Color output on terminals (via ANSI codes) and Windows console.
+ * - Very low memory footprint.
+ * - Supports underscore and blinking text on ANSI terminals.
+ * - Exception-safe (no exceptions are thrown).
+ * - Different levels of logging, configurable at run-time.
+ * - Customizable via macro definitions.
+ *
  * SIMPLE USAGE
  * ------------
  * 5 objects are available to the user to log messages, they are:
@@ -253,14 +261,17 @@
  */
 
 #include <ostream>
-//#include <assert.h>
+#ifdef QLOG_USE_ASSERTS
+#   include <assert.h>
+#   define QLOG_ASSERT(a); assert(a);
+#else
+#   define QLOG_ASSERT(a);
+#endif
 
 // windows color support
 #ifdef WIN32
 #	include <windows.h>
 #endif
-
-
 
 // hide symbols on linux
 #if __GNUC__ >= 4
@@ -290,6 +301,8 @@ static const unsigned error = 5;
 }
 
 #ifdef WIN32
+/** @todo make it exception-safe */
+static inline
 void * get_console_function( char * name )
 {
     static HMODULE kernel32=( HMODULE )0xffffffff;
@@ -371,13 +384,13 @@ typedef user_global_settings<int> settings;
 static QLOG_SUPPRESS_NOT_USED_WARN void set_loglevel(unsigned);
 static QLOG_SUPPRESS_NOT_USED_WARN unsigned get_loglevel();
 
-static
+static inline
 void set_loglevel( unsigned level )
 {
     settings::loglevel = level;
 }
 
-inline
+static inline
 unsigned get_loglevel()
 {
     return settings::loglevel;
@@ -389,7 +402,7 @@ unsigned get_loglevel()
  */
 struct decoration
 {
-    virtual ~decoration() { }
+    virtual ~decoration() throw() { }
     virtual void apply( std::ostream & _ostr ) = 0;
 };
 
@@ -412,15 +425,17 @@ struct text_decoration : public decoration
         return *this;
     }
 
+    /**@todo can std::ostream << throw? what does it do if ostr has a bad bit set */
     virtual void apply( std::ostream & _ostr )
     {
         if( m_txt )
             _ostr << m_txt;
     }
 
-    ~text_decoration()
+    virtual ~text_decoration() throw()
     {
     }
+
 private:
     const char * m_txt;
 };
@@ -432,14 +447,31 @@ struct decorater
 		:m_last_index(0)
 	{
 	}
+
+    /**@brief Registers a new decoration
+     * @param[in] _deco The new decoration to register
+     * @warning Only a limited number of decoration can be added (10 by default)
+     * @throw nothing */
     void add_decoration( decoration * _deco )
     {
-        if (m_last_index < 10 && _deco)
+        QLOG_ASSERT( _deco );
+        QLOG_ASSERT( m_last_index < 10 );
+        if ( _deco )
         {
-            m_list[m_last_index++] = _deco;
+            try
+            {
+                m_list[m_last_index] = _deco;
+                ++m_last_index;
+            } catch (const std::bad_alloc &)
+            {
+                QLOG_ASSERT( 0 && "std::bad_alloc" );
+            }
         }
     }
 
+    /**@brief Apply all decorations to an output stream
+     * @param[in] _ostr The outstream to which decorations will be applied
+     * @throw nothing */
     void apply_all( std::ostream & _ostr )
     {
         for (size_t i = 0; i < m_last_index; ++i)
@@ -448,6 +480,8 @@ struct decorater
         }
     }
 
+    /**@brief Deletes all the registered decorations
+     * @throw nothing */
     void reset()
     {
         for (size_t i = 0; i < m_last_index; ++i)
@@ -461,7 +495,7 @@ struct decorater
 };
 
 // -------------------------------------------------------------------------- //
-inline
+static inline
 decorater & operator << (decorater & _dec, const char * _txt)
 {
     _dec.add_decoration( new text_decoration(_txt) );
@@ -548,6 +582,7 @@ struct logger
     {
         if( can_log() )
         {
+            QLOG_ASSERT(m_output);
             if( _first_part )
                 m_prepend.apply_all( *m_output );
 
@@ -606,8 +641,6 @@ struct logger
             m_append.apply_all( *m_output );
     }
 
-    /**@endcond*/
-
     /**@brief Informs the logger that std::endl, or other io manipulators, have been passed
      * @param[in] _func The io function, such as std::endl
      * @param[in] _first_message Whether it is the first element of the << series.
@@ -623,6 +656,8 @@ struct logger
         }
     }
 
+    /**@endcond*/
+
     /**@brief Conditional logging
      * @param[in] _cond Pass true to enable logging
      * @return A disabled logger if true has been passed, an enabled logger otherwise */
@@ -633,7 +668,11 @@ struct logger
         return ret;
     }
 
+    /**@brief Disables logging (no further message will be output)
+     * @throw nothing */
 	void disable() { m_disabled = true; }
+
+    /**@brief Resumes logging */
 	void enable() { m_disabled = false; }
 
 private:
@@ -645,6 +684,7 @@ private:
 private:
     /**@brief Helper function to check that the logger can output messages
      * @cond GENERATE_INTERNAL_DOCUMENTATION
+     * @throw nothing
      * @private */
     bool can_log() const
     {
@@ -750,7 +790,7 @@ receiver<level> operator<<( const receiver<level> & _receiver,  const T & _messa
 }
 
 // -------------------------------------------------------------------------- //
-template< unsigned level >
+template< unsigned level > inline
 receiver<level> operator<<( const receiver<level> & _recv, standard_endline _func )
 {
     _recv.signal( _func );
@@ -765,7 +805,7 @@ receiver<level> operator << ( const logger<level> & _logger, const T & _message 
 }
 
 // -------------------------------------------------------------------------- //
-template< unsigned level >
+template< unsigned level > inline
 receiver<level> operator<<( const logger<level> & _logger, standard_endline _func )
 {
     _logger.signal( _func, true );
@@ -796,7 +836,7 @@ static logger<loglevel::info> QLOG_NAME_LOGGER_INFO ;
 static logger<loglevel::warning> QLOG_NAME_LOGGER_WARNING ;
 static logger<loglevel::error> QLOG_NAME_LOGGER_ERROR ;
 
-inline
+static inline
 void set_output( std::ostream & _new_output )
 {
     logger< loglevel::debug >().set_output( _new_output );
@@ -809,7 +849,7 @@ void set_output( std::ostream & _new_output )
 // -------------------------------------------------------------------------- //
 /**@brief Terminates the library
  * @note This is only useful on Windows */
-inline
+static inline
 void destroy()
 {
     if( settings::initialized )
@@ -819,8 +859,6 @@ void destroy()
         settings::console_handle = 0;
         settings::set_text_attribute = 0;
 #		endif
-
-        settings::initialized = false;
 
 		QLOG_NAME_LOGGER_DEBUG . reset_decoration();
 		QLOG_NAME_LOGGER_TRACE . reset_decoration();
@@ -840,7 +878,7 @@ void destroy()
 // -------------------------------------------------------------------------- //
 /**@brief Initializes the library
  * @note This is only useful on Windows */
-inline
+static inline
 void init()
 {
     if( !settings::initialized )
@@ -850,13 +888,13 @@ void init()
         settings::set_text_attribute = static_cast<console_function>( get_console_function( "SetConsoleTextAttribute" ) );
 #		endif
 
-		settings::initialized = true;
-
 		QLOG_NAME_LOGGER_DEBUG . enable();
 		QLOG_NAME_LOGGER_TRACE . enable();
 		QLOG_NAME_LOGGER_INFO . enable();
 		QLOG_NAME_LOGGER_WARNING . enable();
 		QLOG_NAME_LOGGER_ERROR . enable();
+
+        settings::initialized = true;
     }
 }
 
@@ -1016,39 +1054,39 @@ private:
     const char * m_bold;
 };
 
-template<unsigned level>
+template<unsigned level> inline
 receiver<level> operator <<( const logger<level> & _logger, const color & _color )
 {
     return _logger << _color.getBold() << _color.getForeground() << _color.getBackground();
 }
 
-template<unsigned level>
+template<unsigned level> inline
 receiver<level> operator <<( const receiver<level> & _recv, const color & _color )
 {
     return _recv << _color.getBold() << _color.getForeground() << _color.getBackground();
 }
 
 // -------------------------------------------------------------------------- //
-template<unsigned level>
+template<unsigned level> inline
 receiver<level> operator <<( const logger<level> & _logger, const underline & )
 {
     return _logger << "\e[4m";
 }
 
-template<unsigned level>
+template<unsigned level> inline
 receiver<level> operator <<( const receiver<level> & _recv, const underline & )
 {
     return _recv << "\e[4m";
 }
 
 // -------------------------------------------------------------------------- //
-template<unsigned level>
+template<unsigned level> inline
 receiver<level> operator <<( const logger<level> & _logger, const blink & )
 {
     return _logger << "\e[5m";
 }
 
-template<unsigned level>
+template<unsigned level> inline
 receiver<level> operator <<( const receiver<level> & _recv, const blink & )
 {
     return _recv << "\e[5m";
@@ -1128,42 +1166,42 @@ private:
     WORD m_attributes;
 };
 
-template<unsigned level>
+template<unsigned level> inline
 receiver<level> operator <<( const logger<level> & _logger, const color & _color )
 {
-    //assert( settings::set_text_attribute && settings::console_handle );
+    QLOG_ASSERT( settings::set_text_attribute && settings::console_handle );
     settings::set_text_attribute( settings::console_handle, _color.getAttributes() );
     return receiver<level>( &_logger ).treat( "", true );
 }
 
-template<unsigned level>
+template<unsigned level> inline
 receiver<level> operator <<( const receiver<level> & _recv, const color & _color )
 {
-    //assert( settings::set_text_attribute && settings::console_handle );
+    QLOG_ASSERT( settings::set_text_attribute && settings::console_handle );
     settings::set_text_attribute( settings::console_handle, _color.getAttributes() );
     return _recv.treat( "", false );
 }
 
 // -------------------------------------------------------------------------- //
-template<unsigned level>
+template<unsigned level> inline
 receiver<level> operator <<( const logger<level> & _logger, const underline & )
 {
     return receiver<level>( &_logger ).treat( "", true );
 }
 
-template<unsigned level>
+template<unsigned level> inline
 receiver<level> operator <<( const receiver<level> & _recv, const underline & )
 {
     return _recv.treat( "", false );
 }
 // -------------------------------------------------------------------------- //
-template<unsigned level>
+template<unsigned level> inline
 receiver<level> operator <<( const logger<level> & _logger, const blink & )
 {
     return receiver<level>( &_logger ).treat( "", true );
 }
 
-template<unsigned level>
+template<unsigned level> inline
 receiver<level> operator <<( const receiver<level> & _recv, const blink & )
 {
     return _recv.treat( "", false );
@@ -1190,14 +1228,14 @@ struct color_decoration : public decoration
         settings::set_text_attribute( settings::console_handle, m_color.getAttributes() );
 #       endif
     }
-    virtual ~color_decoration() { }
+    virtual ~color_decoration() throw() { }
 
 private:
     const color & m_color;
 };
 
 // -------------------------------------------------------------------------- //
-inline
+static inline
 decorater & operator<< ( decorater & _dec, const color & _color )
 {
     _dec.add_decoration( new color_decoration(_color) );
