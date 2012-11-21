@@ -1,0 +1,11 @@
+v3.1
+	- Fixed a bug causing loglevel::disabled not to work correctly
+	- Fixed compilation when multiple compile units were present
+	- Documentation is now distributed along with the other files
+	- Blink and Underline attributes can now be used in prepend and append
+	- Bold attribute can be used without specifying a color
+
+
+v3.0
+	- Initial version (third rewrite)
+	- Works on both Windows and Linux

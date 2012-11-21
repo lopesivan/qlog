@@ -598,6 +598,22 @@ TEST_FIXTURE( qlog_resetter, LoggingDisabledWithPrefixAndSuffixes )
     CHECK_EQUAL( 0, ostr.str().size() );
 }
 
+TEST_FIXTURE( qlog_resetter, CustomFlavour )
+{
+    std::cout << "CustomFlavour\n";
+    set_output( std::cout );
+    set_loglevel( loglevel::info );
+
+    qlog::info.prepend() << "[" << color(gray) << ".." << color() << "] ";
+    qlog::warning.prepend() << "[" << color( green ) << "ww" << color() << "] ";
+    qlog::error.prepend() << "[" << color( red, true ) << blink() << "EE" << color() << "] " << color(true);
+    qlog::error.append() << color();
+
+    qlog::info      << "A custom flavor info line\n";
+    qlog::warning   << "A custom flavor warning line\n";
+    qlog::error     << "A custom flavor error line\n";
+}
+
 #ifndef WIN32
 TEST_FIXTURE( qlog_resetter, ExceptionSafety )
 {

@@ -977,10 +977,11 @@ struct color
     {
     }
 
-    color()
+    explicit
+    color( bool _bold = false )
         :m_foreground( "\033[0m" )
         ,m_background( "" )
-        ,m_bold( "" )
+        ,m_bold( _bold ? "\033[1m" : "" )
     {
     }
 
@@ -1061,13 +1062,13 @@ private:
 template<unsigned level> inline
 receiver<level> operator <<( const logger<level> & _logger, const color & _color )
 {
-    return _logger << _color.getBold() << _color.getForeground() << _color.getBackground();
+    return _logger << _color.getForeground() << _color.getBackground() << _color.getBold();
 }
 
 template<unsigned level> inline
 receiver<level> operator <<( const receiver<level> & _recv, const color & _color )
 {
-    return _recv << _color.getBold() << _color.getForeground() << _color.getBackground();
+    return _recv << _color.getForeground() << _color.getBackground() << _color.getBold();
 }
 
 // -------------------------------------------------------------------------- //
@@ -1100,10 +1101,11 @@ receiver<level> operator <<( const receiver<level> & _recv, const blink & )
 
 struct color
 {
-    color()
+    explicit
+    color( bool _bold = false )
         :m_attributes( 0 )
     {
-        setForeground( white, false );
+        setForeground( white, _bold );
         setBackground( black );
     }
 
@@ -1227,7 +1229,7 @@ struct color_decoration : public decoration
     virtual void apply( std::ostream & _ostr )
     {
 #       ifndef WIN32
-        _ostr << m_color.getBold() << m_color.getForeground() << m_color.getBackground();
+        _ostr << m_color.getForeground() << m_color.getBackground() << m_color.getBold();
 #       else
         settings::set_text_attribute( settings::console_handle, m_color.getAttributes() );
 #       endif
@@ -1247,8 +1249,53 @@ decorater & operator<< ( decorater & _dec, const color & _color )
 }
 /**@endcond */
 
-} // namespace
+// -------------------------------------------------------------------------- //
+struct blink_decoration : public decoration
+{
+    virtual ~blink_decoration() throw() { }
+    virtual void apply( std::ostream & _ostr )
+    {
 
+#       ifndef WIN32
+        _ostr << "\e[5m";
+#       else
+        (void)_ostr;
+#       endif
+    }
+};
+
+// -------------------------------------------------------------------------- //
+static inline
+decorater & operator << ( decorater & _dec, const blink & )
+{
+    _dec.add_decoration( new blink_decoration() );
+    return _dec;
+}
+
+// -------------------------------------------------------------------------- //
+struct underline_decoration : public decoration
+{
+    virtual ~underline_decoration() throw()  { }
+    virtual void apply( std::ostream & _ostr )
+    {
+
+#       ifndef WIN32
+        _ostr << "\e[4m";;
+#       else
+        (void)_ostr;
+#       endif
+    }
+};
+
+// -------------------------------------------------------------------------- //
+static inline
+decorater & operator << ( decorater & _dec, const underline  )
+{
+    _dec.add_decoration( new underline_decoration() );
+    return _dec;
+}
+
+} // namespace
 #if __GNUC__ >= 4
 #   pragma GCC visibility pop
 #endif
