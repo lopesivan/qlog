@@ -615,7 +615,7 @@ struct logger
      *
      *     qlog::error.set_output( output_file );
      *
-     *     qlog::error << "This message will be writtin in output.log" << std::endl;
+     *     qlog::error << "This message will be written in output.log" << std::endl;
      * }
      * @endcode
      */
