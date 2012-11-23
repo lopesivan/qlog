@@ -535,6 +535,7 @@ struct logger
 
     ~logger()
     {
+        reset_decoration();
     }
 
     /**@brief Removes all prepending or appending text */
