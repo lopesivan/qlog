@@ -530,6 +530,7 @@ struct logger
     explicit
     logger( bool _disabled = false )
         :m_disabled( _disabled )
+        ,m_nbReceivers( 0 )
     {
     }
 
@@ -539,11 +540,13 @@ struct logger
      * @param[in] _logger The logger to copy */
     logger( const logger & _logger )
         :m_disabled( _logger.m_disabled )
+        ,m_nbReceivers( _logger.m_nbReceivers )
     {
     }
 
     ~logger()
     {
+        QLOG_ASSERT( 0 == m_nbReceivers );
         reset_decoration();
     }
 
@@ -646,16 +649,8 @@ struct logger
         return m_prepend;
     }
 
-    /**@brief Informs the logger that the last message was treated and that custom text can be appended
-     * @cond GENERATE_INTERNAL_DOCUMENTATION
-     * @private */
-    void signal_end() const
-    {
-        if( can_log() )
-            m_append.apply_all( *m_output );
-    }
-
     /**@brief Informs the logger that std::endl, or other io manipulators, have been passed
+     * @cond GENERATE_INTERNAL_DOCUMENTATION
      * @param[in] _func The io function, such as std::endl
      * @param[in] _first_message Whether it is the first element of the << series.
      * @private */
@@ -667,6 +662,20 @@ struct logger
                 m_prepend.apply_all( *m_output );
 
             _func( *m_output );
+        }
+    }
+
+    void signal_creation() const
+    {
+        ++m_nbReceivers;
+    }
+
+    void signal_destruction() const
+    {
+        QLOG_ASSERT( m_nbReceivers );
+        if (0 == --m_nbReceivers)
+        {
+            signal_end();
         }
     }
 
@@ -691,6 +700,7 @@ struct logger
 
 private:
     bool m_disabled;
+    mutable unsigned m_nbReceivers;
     static std::ostream * m_output;
     static decorater m_prepend;
     static decorater m_append;
@@ -703,6 +713,16 @@ private:
     bool can_log() const
     {
         return ( level >= get_loglevel() ) && m_output && !isDisabled();
+    }
+
+    /**@brief Informs the logger that the last message was treated and that custom text can be appended
+     * @private */
+    void signal_end() const
+    {
+        QLOG_ASSERT( 0 == m_nbReceivers );
+
+        if( can_log() )
+            m_append.apply_all( *m_output );
     }
     /** @endcond */
 };
@@ -748,28 +768,29 @@ struct receiver
 {
     explicit
     receiver( const logger<level> * _logger, bool _muted = false )
-        :m_treated( false )
-        ,m_logger( _logger )
+        :m_logger( _logger )
         ,m_muted( _muted )
-    {}
+    {
+        QLOG_ASSERT( 0 != _logger );
+        _logger->signal_creation();
+    }
 
     receiver( const receiver & _copy )
-        :m_treated( false )
-        ,m_logger( _copy.m_logger )
+        :m_logger( _copy.m_logger )
         ,m_muted( _copy.m_muted )
-    {}
+    {
+        m_logger->signal_creation();
+    }
 
     ~receiver()
     {
-        if( !m_treated )
-            m_logger->signal_end();
+        QLOG_ASSERT( 0 != m_logger);
+        m_logger->signal_destruction();
     }
 
     bool is_muted() const { return m_muted; }
     void signal( standard_endline _func ) const
     {
-        m_treated = true;
-
         if( !is_muted() )
         {
             m_logger->signal( _func );
@@ -779,8 +800,6 @@ struct receiver
     template< typename T >
     receiver treat( const T & _message, bool _first_part ) const
     {
-        m_treated = true;
-
         if( !m_muted )
             m_logger->treat( _message, _first_part );
 
@@ -791,7 +810,6 @@ private:
     receiver operator=( const receiver & );
 
 private:
-    mutable bool m_treated;
     const logger<level> * m_logger;
     mutable bool m_muted;
 };
