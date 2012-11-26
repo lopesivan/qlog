@@ -385,7 +385,7 @@ typedef user_global_settings<int> settings;
 #   define QLOG_SUPPRESS_NOT_USED_WARN
 #endif
 
-static QLOG_SUPPRESS_NOT_USED_WARN void set_loglevel(unsigned);
+static QLOG_SUPPRESS_NOT_USED_WARN void set_loglevel( unsigned );
 static QLOG_SUPPRESS_NOT_USED_WARN unsigned get_loglevel();
 
 static inline
@@ -419,12 +419,12 @@ struct text_decoration : public decoration
         QLOG_ASSERT( _txt );
     }
 
-    text_decoration( text_decoration& _copy )
+    text_decoration( text_decoration & _copy )
         :m_txt( _copy.m_txt )
     {
     }
 
-    text_decoration& operator=( text_decoration & _obj )
+    text_decoration & operator=( text_decoration & _obj )
     {
         m_txt = _obj.m_txt;
         return *this;
@@ -448,10 +448,10 @@ private:
 // -------------------------------------------------------------------------- //
 struct decorater
 {
-	decorater()
-		:m_last_index(0)
-	{
-	}
+    decorater()
+        :m_last_index( 0 )
+    {
+    }
 
     /**@brief Registers a new decoration
      * @param[in] _deco The new decoration to register
@@ -476,9 +476,9 @@ struct decorater
      * @throw nothing */
     void apply_all( std::ostream & _ostr )
     {
-        for (size_t i = 0; i < m_last_index; ++i)
+        for( size_t i = 0; i < m_last_index; ++i )
         {
-            m_list[i]->apply(_ostr);
+            m_list[i]->apply( _ostr );
         }
     }
 
@@ -486,7 +486,7 @@ struct decorater
      * @throw nothing */
     void reset()
     {
-        for (size_t i = 0; i < m_last_index; ++i)
+        for( size_t i = 0; i < m_last_index; ++i )
         {
             delete m_list[i];
         }
@@ -498,7 +498,7 @@ struct decorater
 
 // -------------------------------------------------------------------------- //
 static inline
-decorater & operator << (decorater & _dec, const char * _txt)
+decorater & operator << ( decorater & _dec, const char * _txt )
 {
     QLOG_ASSERT( nullptr != _txt );
 
@@ -509,7 +509,7 @@ decorater & operator << (decorater & _dec, const char * _txt)
     }
     catch( const std::bad_alloc & )
     {
-        QLOG_ASSERT(0 && "std::bad_alloc");
+        QLOG_ASSERT( 0 && "std::bad_alloc" );
     }
 
     return _dec;
@@ -596,7 +596,7 @@ struct logger
     {
         if( can_log() )
         {
-            QLOG_ASSERT(m_output);
+            QLOG_ASSERT( m_output );
             if( _first_part )
                 m_prepend.apply_all( *m_output );
 
@@ -684,10 +684,10 @@ struct logger
 
     /**@brief Disables logging (no further message will be output)
      * @throw nothing */
-	void disable() { m_disabled = true; }
+    void disable() { m_disabled = true; }
 
     /**@brief Resumes logging */
-	void enable() { m_disabled = false; }
+    void enable() { m_disabled = false; }
 
 private:
     bool m_disabled;
@@ -874,20 +874,20 @@ void destroy()
         settings::set_text_attribute = 0;
 #		endif
 
-		QLOG_NAME_LOGGER_DEBUG . reset_decoration();
-		QLOG_NAME_LOGGER_TRACE . reset_decoration();
-		QLOG_NAME_LOGGER_INFO . reset_decoration();
-		QLOG_NAME_LOGGER_WARNING . reset_decoration();
-		QLOG_NAME_LOGGER_ERROR . reset_decoration();
+        QLOG_NAME_LOGGER_DEBUG . reset_decoration();
+        QLOG_NAME_LOGGER_TRACE . reset_decoration();
+        QLOG_NAME_LOGGER_INFO . reset_decoration();
+        QLOG_NAME_LOGGER_WARNING . reset_decoration();
+        QLOG_NAME_LOGGER_ERROR . reset_decoration();
 
-		QLOG_NAME_LOGGER_DEBUG . disable();
-		QLOG_NAME_LOGGER_TRACE . disable();
-		QLOG_NAME_LOGGER_INFO . disable();
-		QLOG_NAME_LOGGER_WARNING . disable();
-		QLOG_NAME_LOGGER_ERROR . disable();
+        QLOG_NAME_LOGGER_DEBUG . disable();
+        QLOG_NAME_LOGGER_TRACE . disable();
+        QLOG_NAME_LOGGER_INFO . disable();
+        QLOG_NAME_LOGGER_WARNING . disable();
+        QLOG_NAME_LOGGER_ERROR . disable();
 
-		settings::initialized = false;
-	}
+        settings::initialized = false;
+    }
 }
 // -------------------------------------------------------------------------- //
 /**@brief Initializes the library
@@ -902,11 +902,11 @@ void init()
         settings::set_text_attribute = static_cast<console_function>( get_console_function( "SetConsoleTextAttribute" ) );
 #		endif
 
-		QLOG_NAME_LOGGER_DEBUG . enable();
-		QLOG_NAME_LOGGER_TRACE . enable();
-		QLOG_NAME_LOGGER_INFO . enable();
-		QLOG_NAME_LOGGER_WARNING . enable();
-		QLOG_NAME_LOGGER_ERROR . enable();
+        QLOG_NAME_LOGGER_DEBUG . enable();
+        QLOG_NAME_LOGGER_TRACE . enable();
+        QLOG_NAME_LOGGER_INFO . enable();
+        QLOG_NAME_LOGGER_WARNING . enable();
+        QLOG_NAME_LOGGER_ERROR . enable();
 
         settings::initialized = true;
     }
@@ -1005,7 +1005,7 @@ struct color
     {
     }
 
-    color& operator=( const color & _copy )
+    color & operator=( const color & _copy )
     {
         m_foreground =_copy.m_foreground;
         m_background = _copy.m_background;
@@ -1241,7 +1241,7 @@ receiver<level> operator <<( const receiver<level> & _recv, const blink & )
 struct color_decoration : public decoration
 {
     color_decoration( const color & _color )
-        :m_color(_color)
+        :m_color( _color )
     {
     }
 
@@ -1287,7 +1287,7 @@ struct blink_decoration : public decoration
 #       ifndef WIN32
         _ostr << "\e[5m";
 #       else
-        (void)_ostr;
+        ( void )_ostr;
 #       endif
     }
 };
@@ -1319,7 +1319,7 @@ struct underline_decoration : public decoration
 #       ifndef WIN32
         _ostr << "\e[4m";;
 #       else
-        (void)_ostr;
+        ( void )_ostr;
 #       endif
     }
 };
