@@ -416,6 +416,7 @@ struct text_decoration : public decoration
     text_decoration( const char * _txt )
         :m_txt( _txt )
     {
+        QLOG_ASSERT( _txt );
     }
 
     text_decoration( text_decoration& _copy )
@@ -432,12 +433,12 @@ struct text_decoration : public decoration
     /**@todo can std::ostream << throw? what does it do if ostr has a bad bit set */
     virtual void apply( std::ostream & _ostr )
     {
-        if( m_txt )
-            _ostr << m_txt;
+        _ostr << m_txt;
     }
 
     virtual ~text_decoration() throw()
     {
+        QLOG_ASSERT( m_txt );
     }
 
 private:
@@ -456,20 +457,17 @@ struct decorater
      * @param[in] _deco The new decoration to register
      * @warning Only a limited number of decoration can be added (10 by default)
      * @throw nothing */
-    void add_decoration( decoration * _deco )
+    void add_decoration( decoration & _deco )
     {
-        QLOG_ASSERT( _deco );
         QLOG_ASSERT( m_last_index < QLOG_MAX_DECORATIONS );
-        if ( _deco )
+        try
         {
-            try
-            {
-                m_list[m_last_index] = _deco;
-                ++m_last_index;
-            } catch (const std::bad_alloc &)
-            {
-                QLOG_ASSERT( 0 && "std::bad_alloc" );
-            }
+            m_list[m_last_index] = &_deco;
+            ++m_last_index;
+        }
+        catch( const std::bad_alloc & )
+        {
+            QLOG_ASSERT( 0 && "std::bad_alloc" );
         }
     }
 
@@ -502,7 +500,18 @@ struct decorater
 static inline
 decorater & operator << (decorater & _dec, const char * _txt)
 {
-    _dec.add_decoration( new text_decoration(_txt) );
+    QLOG_ASSERT( nullptr != _txt );
+
+    try
+    {
+        decoration * const newdeco = new text_decoration( _txt );
+        _dec.add_decoration( *newdeco );
+    }
+    catch( const std::bad_alloc & )
+    {
+        QLOG_ASSERT(0 && "std::bad_alloc");
+    }
+
     return _dec;
 }
 /**@endcond */
@@ -976,6 +985,9 @@ struct color
 {
     virtual ~color()
     {
+        QLOG_ASSERT( nullptr != m_foreground );
+        QLOG_ASSERT( nullptr != m_background );
+        QLOG_ASSERT( nullptr != m_bold );
     }
 
     explicit
@@ -1017,6 +1029,8 @@ struct color
         case magenta: m_foreground = "\033[35m"; break;
         case cyan: m_foreground = "\033[36m"; break;
         case white: m_foreground = "\033[37m"; break;
+
+        default: break;
         }
     }
 
@@ -1035,6 +1049,8 @@ struct color
         case magenta: m_foreground = "\033[35;"; break;
         case cyan: m_foreground = "\033[36;"; break;
         case white: m_foreground = "\033[37;"; break;
+
+        default: break;
         }
 
         switch( _background )
@@ -1047,6 +1063,8 @@ struct color
         case magenta: m_background = "45m"; break;
         case cyan: m_background = "46m"; break;
         case white: m_background = "47m"; break;
+
+        default: break;
         }
     }
 
@@ -1245,7 +1263,16 @@ private:
 static inline
 decorater & operator<< ( decorater & _dec, const color & _color )
 {
-    _dec.add_decoration( new color_decoration(_color) );
+    try
+    {
+        decoration * const newdeco = new color_decoration( _color );
+        _dec.add_decoration( *newdeco );
+    }
+    catch( const std::bad_alloc & )
+    {
+        QLOG_ASSERT( 0 && "std::bad_alloc" );
+    }
+
     return _dec;
 }
 /**@endcond */
@@ -1269,7 +1296,16 @@ struct blink_decoration : public decoration
 static inline
 decorater & operator << ( decorater & _dec, const blink & )
 {
-    _dec.add_decoration( new blink_decoration() );
+    try
+    {
+        decoration * const newdeco = new blink_decoration();
+        _dec.add_decoration( *newdeco );
+    }
+    catch( const std::bad_alloc & )
+    {
+        QLOG_ASSERT( 0 && "std::bad_alloc" );
+    }
+
     return _dec;
 }
 
@@ -1290,9 +1326,18 @@ struct underline_decoration : public decoration
 
 // -------------------------------------------------------------------------- //
 static inline
-decorater & operator << ( decorater & _dec, const underline  )
+decorater & operator << ( decorater & _dec, const underline & )
 {
-    _dec.add_decoration( new underline_decoration() );
+    try
+    {
+        decoration * const newdeco = new underline_decoration();
+        _dec.add_decoration( *newdeco );
+    }
+    catch( const std::bad_alloc & )
+    {
+        QLOG_ASSERT( 0 && "std::bad_alloc" );
+    }
+
     return _dec;
 }
 
