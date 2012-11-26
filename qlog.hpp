@@ -500,7 +500,7 @@ struct decorater
 static inline
 decorater & operator << ( decorater & _dec, const char * _txt )
 {
-    QLOG_ASSERT( nullptr != _txt );
+    QLOG_ASSERT( 0 != _txt );
 
     try
     {
@@ -985,9 +985,9 @@ struct color
 {
     virtual ~color()
     {
-        QLOG_ASSERT( nullptr != m_foreground );
-        QLOG_ASSERT( nullptr != m_background );
-        QLOG_ASSERT( nullptr != m_bold );
+        QLOG_ASSERT( 0 != m_foreground );
+        QLOG_ASSERT( 0 != m_background );
+        QLOG_ASSERT( 0 != m_bold );
     }
 
     explicit
