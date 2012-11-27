@@ -1,3 +1,4 @@
+#define QLOG_USE_ASSERTS
 #include "qlog.hpp"
 #include <UnitTest++/UnitTest++.h>
 #include <iostream>
@@ -612,6 +613,21 @@ TEST_FIXTURE( qlog_resetter, CustomFlavour )
     qlog::info      << "A custom flavor info line\n";
     qlog::warning   << "A custom flavor warning line\n";
     qlog::error     << "A custom flavor error line\n";
+}
+
+TEST_FIXTURE( qlog_resetter, ColorCopy )
+{
+    std::cout << "ColorCopy\n";
+    qlog::color vert(green);
+    qlog::color copy( vert );
+
+#ifndef WIN32
+    CHECK_EQUAL(vert.getBold(), copy.getBold());
+    CHECK_EQUAL(vert.getForeground(), copy.getForeground());
+    CHECK_EQUAL(vert.getBackground(), copy.getBackground());
+#else
+    CHECK_EQUAL(vert.getAttributes(), copy.getAttributes());
+#endif
 }
 
 #ifndef WIN32

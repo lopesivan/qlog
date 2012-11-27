@@ -1084,6 +1084,10 @@ struct color
 
         default: break;
         }
+
+        QLOG_ASSERT(0 != m_foreground);
+        QLOG_ASSERT(0 != m_background);
+        QLOG_ASSERT(0 != m_bold);
     }
 
     const char * getBold() const { return m_bold; }
@@ -1274,7 +1278,7 @@ struct color_decoration : public decoration
     virtual ~color_decoration() throw() { }
 
 private:
-    const color & m_color;
+    color m_color;
 };
 
 // -------------------------------------------------------------------------- //
