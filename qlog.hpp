@@ -446,10 +446,10 @@ private:
 };
 
 // -------------------------------------------------------------------------- //
+template <unsigned loglevel, bool append>
 struct decorater
 {
     decorater()
-        :m_last_index( 0 )
     {
     }
 
@@ -492,13 +492,18 @@ struct decorater
         }
         m_last_index = 0;
     }
-    mutable size_t m_last_index;
-    decoration * m_list[QLOG_MAX_DECORATIONS];
+    static size_t m_last_index;
+    static decoration * m_list[QLOG_MAX_DECORATIONS];
 };
 
+template< unsigned loglevel, bool append >
+size_t decorater<loglevel, append>::m_last_index = 0;
+
+template< unsigned loglevel, bool append >
+decoration * decorater<loglevel, append>::m_list[QLOG_MAX_DECORATIONS];
 // -------------------------------------------------------------------------- //
-static inline
-decorater & operator << ( decorater & _dec, const char * _txt )
+template< unsigned loglevel, bool append > inline
+decorater<loglevel, append> & operator << ( decorater<loglevel, append> & _dec, const char * _txt )
 {
     QLOG_ASSERT( 0 != _txt );
 
@@ -638,13 +643,13 @@ struct logger
     }
 
     /**@brief Adds a custom text after all logged messages. */
-    decorater & append()
+    decorater<level, true> & append()
     {
         return m_append;
     }
 
     /**@brief Adds a custom text before all logged messages. */
-    decorater & prepend()
+    decorater<level, false> & prepend()
     {
         return m_prepend;
     }
@@ -702,8 +707,8 @@ private:
     bool m_disabled;
     mutable unsigned m_nbReceivers;
     static std::ostream * m_output;
-    static decorater m_prepend;
-    static decorater m_append;
+    static decorater<level, false> m_prepend;
+    static decorater<level, true> m_append;
 
 private:
     /**@brief Helper function to check that the logger can output messages
@@ -731,10 +736,10 @@ template< unsigned level >
 std::ostream * logger<level>::m_output;
 
 template< unsigned level >
-decorater logger<level>::m_append;
+decorater<level, true> logger<level>::m_append;
 
 template< unsigned level >
-decorater logger<level>::m_prepend;
+decorater<level, false> logger<level>::m_prepend;
 
 // -------------------------------------------------------------------------- //
 /**@struct receiver
@@ -871,12 +876,13 @@ static logger<loglevel::error> QLOG_NAME_LOGGER_ERROR ;
 static inline
 void set_output( std::ostream & _new_output )
 {
-    logger< loglevel::debug >().set_output( _new_output );
-    logger< loglevel::trace >().set_output( _new_output );
-    logger< loglevel::info >().set_output( _new_output );
-    logger< loglevel::warning >().set_output( _new_output );
-    logger< loglevel::error >().set_output( _new_output );
+    QLOG_NAME_LOGGER_DEBUG . set_output( _new_output );
+    QLOG_NAME_LOGGER_TRACE . set_output( _new_output );
+    QLOG_NAME_LOGGER_INFO . set_output( _new_output );
+    QLOG_NAME_LOGGER_WARNING . set_output( _new_output );
+    QLOG_NAME_LOGGER_ERROR . set_output( _new_output );
 }
+
 
 // -------------------------------------------------------------------------- //
 /**@brief Terminates the library
@@ -904,6 +910,18 @@ void destroy()
         QLOG_NAME_LOGGER_WARNING . disable();
         QLOG_NAME_LOGGER_ERROR . disable();
 
+		// resetting decorations
+		QLOG_NAME_LOGGER_DEBUG . prepend().reset();
+		QLOG_NAME_LOGGER_DEBUG . append().reset();
+		QLOG_NAME_LOGGER_TRACE . prepend().reset();
+		QLOG_NAME_LOGGER_TRACE . append().reset();
+		QLOG_NAME_LOGGER_INFO . prepend().reset();
+		QLOG_NAME_LOGGER_INFO . append().reset();
+		QLOG_NAME_LOGGER_ERROR . prepend().reset();
+		QLOG_NAME_LOGGER_ERROR . append().reset();
+		QLOG_NAME_LOGGER_WARNING . prepend().reset();
+		QLOG_NAME_LOGGER_WARNING . append().reset();
+
         settings::initialized = false;
     }
 }
@@ -929,7 +947,6 @@ void init()
         settings::initialized = true;
     }
 }
-
 
 static const unsigned black = 1;
 static const unsigned red = 2;
@@ -1282,8 +1299,8 @@ private:
 };
 
 // -------------------------------------------------------------------------- //
-static inline
-decorater & operator<< ( decorater & _dec, const color & _color )
+template <unsigned level, bool append >
+decorater<level, append> & operator<< ( decorater<level, append> & _dec, const color & _color )
 {
     try
     {
@@ -1315,8 +1332,8 @@ struct blink_decoration : public decoration
 };
 
 // -------------------------------------------------------------------------- //
-static inline
-decorater & operator << ( decorater & _dec, const blink & )
+template<unsigned level, bool append > inline
+decorater<level, append> & operator << ( decorater<level, append> & _dec, const blink & )
 {
     try
     {
@@ -1347,8 +1364,8 @@ struct underline_decoration : public decoration
 };
 
 // -------------------------------------------------------------------------- //
-static inline
-decorater & operator << ( decorater & _dec, const underline & )
+template< unsigned loglevel, bool append > inline
+decorater<loglevel, append> & operator << ( decorater<loglevel, append> & _dec, const underline & )
 {
     try
     {
