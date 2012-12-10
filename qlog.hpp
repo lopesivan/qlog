@@ -291,6 +291,12 @@
 #	include <windows.h>
 #endif
 
+#ifdef QLOG_MULTITHREAD_WIN32
+#	ifndef QLOG_MULTITHREAD
+#		define QLOG_MULTITHREAD
+#	endif
+#endif
+
 #ifndef QLOG_MAX_DECORATIONS
 #   define QLOG_MAX_DECORATIONS 10
 #endif
@@ -349,6 +355,35 @@ struct mutex
 private:
     pthread_mutexattr_t m_attr;
     pthread_mutex_t m_mutex;
+};
+#elif defined QLOG_MULTITHREAD_WIN32
+struct mutex
+{
+	mutex()
+		:m_section()
+	{
+		InitializeCriticalSection( &m_section );
+	}
+
+	~mutex()
+	{
+		DeleteCriticalSection( &m_section );
+	}
+
+	bool lock()
+	{
+		EnterCriticalSection( &m_section );
+		return true;
+	}
+
+	bool unlock()
+	{
+		LeaveCriticalSection( &m_section );
+		return true;
+	}
+
+private:
+	CRITICAL_SECTION m_section;
 };
 #endif
 

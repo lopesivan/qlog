@@ -2,7 +2,9 @@
 #ifdef TEST_MULTITHREADING
 #   ifndef WIN32
 #       define QLOG_MULTITHREAD_PTHREAD
-#   endif
+#   else
+#		define QLOG_MULTITHREAD_WIN32
+#	endif
 #endif
 #include "qlog.hpp"
 #include <UnitTest++/UnitTest++.h>
@@ -13,7 +15,7 @@
 #endif
 
 #ifdef TEST_MULTITHREADING
-#include <thread>
+#	include <thread>
 #endif
 
 using namespace qlog;
