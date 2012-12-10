@@ -1,10 +1,19 @@
 #define QLOG_USE_ASSERTS
+#ifdef TEST_MULTITHREADING
+#   ifndef WIN32
+#       define QLOG_MULTITHREAD_PTHREAD
+#   endif
+#endif
 #include "qlog.hpp"
 #include <UnitTest++/UnitTest++.h>
 #include <iostream>
 #include <fstream>
 #ifndef WIN32
 #   include <sys/resource.h>
+#endif
+
+#ifdef TEST_MULTITHREADING
+#include <thread>
 #endif
 
 using namespace qlog;
@@ -630,6 +639,76 @@ TEST_FIXTURE( qlog_resetter, ColorCopy )
 #endif
 }
 
+#ifdef TEST_MULTITHREADING
+void multithreading_test_one(const char ch, const unsigned maxIter)
+{
+    unsigned i = 0;
+    while (i++ < maxIter)
+        qlog::info << ch << ch << ch << ch << ch << ch;
+}
+
+
+TEST_FIXTURE( qlog_resetter, MultithreadingTestOne )
+{
+    std::cout << "MultithreadingTestOne" << std::endl;
+
+    std::ostringstream ostr;
+    set_loglevel( loglevel::info );
+    set_output( ostr );
+
+    std::thread t1( multithreading_test_one, 'a', 80000);
+    std::thread t2( multithreading_test_one, 'b', 80000);
+
+    t1.join();
+    t2.join();
+
+    const std::string & result = ostr.str();
+
+    CHECK_EQUAL( 0, result.size() % 6 );
+    for ( std::string::const_iterator it = result.begin(); it != result.end(); )
+    {
+        const char first_char = *it++;
+        CHECK_EQUAL( first_char, *it++ );
+        CHECK_EQUAL( first_char, *it++ );
+        CHECK_EQUAL( first_char, *it++ );
+        CHECK_EQUAL( first_char, *it++ );
+        CHECK_EQUAL( first_char, *it++ );
+    }
+}
+
+void createSomeThreads();
+
+TEST_FIXTURE( qlog_resetter, MultithreadingTestTwo )
+{
+    std::cout << "MultithreadingTestTwo" << std::endl;
+
+    std::ostringstream ostr;
+    set_loglevel( loglevel::info );
+    set_output( ostr );
+
+    std::thread t1( multithreading_test_one, 'c', 80000);
+    std::thread t2( multithreading_test_one, 'd', 80000);
+
+    createSomeThreads();
+
+    t1.join();
+    t2.join();
+
+    const std::string & result = ostr.str();
+
+    CHECK_EQUAL( 0, result.size() % 6 );
+    for ( std::string::const_iterator it = result.begin(); it != result.end(); )
+    {
+        const char first_char = *it++;
+        CHECK_EQUAL( first_char, *it++ );
+        CHECK_EQUAL( first_char, *it++ );
+        CHECK_EQUAL( first_char, *it++ );
+        CHECK_EQUAL( first_char, *it++ );
+        CHECK_EQUAL( first_char, *it++ );
+    }
+}
+#endif
+
 #ifndef WIN32
 TEST_FIXTURE( qlog_resetter, ExceptionSafety )
 {
@@ -670,8 +749,10 @@ TEST_FIXTURE( qlog_resetter, ExceptionSafety )
         CHECK_EQUAL( 0, 1 );
     }
 }
-
 #endif
+////////////////////////////////////////
+// NOTHING BEYOND THIS                //
+////////////////////////////////////////
 int main( int , char ** )
 {
     return UnitTest::RunAllTests();

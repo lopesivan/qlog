@@ -258,6 +258,17 @@
  * }
  * @endcode
  *
+ *
+ * MULTITHREADING
+ * --------------
+ *
+ * qlog allows multiple threads to run on the same level of logging. When support is enabled, many threads
+ * can concurrently write on the same logger level. Pay attention that different level of logging
+ * will not be multithread-safe, they should write to different outputs.
+ *
+ * To enable multithread mode, you can define QLOG_MULTITHREAD and provide a class or a struct called
+ * mutex in the qlog namespace. Alternatively, defining QLOG_MULTITHREAD_PTHREAD lets you use pthread
+ * mutexes.
  */
 
 #include <ostream>
@@ -266,6 +277,13 @@
 #   define QLOG_ASSERT(a); assert(a);
 #else
 #   define QLOG_ASSERT(a);
+#endif
+
+#ifdef QLOG_MULTITHREAD_PTHREAD
+#   include <pthread.h>
+#   ifndef QLOG_MULTITHREAD
+#       define QLOG_MULTITHREAD
+#   endif
 #endif
 
 // windows color support
@@ -290,6 +308,50 @@ namespace QLOG_NAMESPACE
 namespace qlog
 {
 #endif
+
+// -------------------------------------------------------------------------- //
+
+// mutex
+#ifdef QLOG_MULTITHREAD_PTHREAD
+struct cannot_create_mutex : std::exception
+{
+};
+
+struct mutex
+{
+    mutex()
+        :m_attr()
+        ,m_mutex()
+    {
+        if (pthread_mutexattr_init( &m_attr ) != 0)
+            throw cannot_create_mutex();
+
+        if (pthread_mutex_init( &m_mutex, &m_attr ) != 0)
+            throw cannot_create_mutex();
+    }
+
+    ~mutex()
+    {
+        pthread_mutex_destroy( &m_mutex );
+        pthread_mutexattr_destroy( &m_attr );
+    }
+
+    bool lock()
+    {
+        return pthread_mutex_lock( &m_mutex ) == 0;
+    }
+
+    bool unlock()
+    {
+        return pthread_mutex_unlock( &m_mutex ) == 0;
+    }
+
+private:
+    pthread_mutexattr_t m_attr;
+    pthread_mutex_t m_mutex;
+};
+#endif
+
 // -------------------------------------------------------------------------- //
 // the different levels of logging
 
@@ -664,7 +726,12 @@ struct logger
         if( can_log() )
         {
             if( _first_message )
+            {
+#               ifdef QLOG_MULTITHREAD
+                lock();
+#               endif
                 m_prepend.apply_all( *m_output );
+            }
 
             _func( *m_output );
         }
@@ -681,8 +748,18 @@ struct logger
         if (0 == --m_nbReceivers)
         {
             signal_end();
+#           ifdef QLOG_MULTITHREAD
+            m_mutex.unlock();
+#           endif
         }
     }
+
+#   ifdef QLOG_MULTITHREAD
+    void lock() const
+    {
+        m_mutex.lock();
+    }
+#   endif
 
     /**@endcond*/
 
@@ -709,6 +786,9 @@ private:
     static std::ostream * m_output;
     static decorater<level, false> m_prepend;
     static decorater<level, true> m_append;
+#   ifdef QLOG_MULTITHREAD
+    static mutex m_mutex;
+#   endif
 
 private:
     /**@brief Helper function to check that the logger can output messages
@@ -732,6 +812,12 @@ private:
     /** @endcond */
 };
 // -------------------------------------------------------------------------- //
+
+#ifdef QLOG_MULTITHREAD
+template< unsigned level >
+mutex logger<level>::m_mutex;
+#endif
+
 template< unsigned level >
 std::ostream * logger<level>::m_output;
 
@@ -838,6 +924,9 @@ receiver<level> operator<<( const receiver<level> & _recv, standard_endline _fun
 template< unsigned level, typename T > inline
 receiver<level> operator << ( const logger<level> & _logger, const T & _message )
 {
+#   ifdef QLOG_MULTITHREAD
+    _logger.lock();
+#   endif
     return receiver<level>( &_logger ).treat( _message, true );
 }
 
