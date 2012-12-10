@@ -749,7 +749,7 @@ struct logger
         {
             signal_end();
 #           ifdef QLOG_MULTITHREAD
-            m_mutex.unlock();
+            unlock();
 #           endif
         }
     }
@@ -757,7 +757,36 @@ struct logger
 #   ifdef QLOG_MULTITHREAD
     void lock() const
     {
-        m_mutex.lock();
+        m_mutex->lock();
+    }
+
+    void unlock() const
+    {
+        m_mutex->unlock();
+    }
+
+    bool init_mutex()
+    {
+        bool ret = false;
+        QLOG_ASSERT( nullptr == m_mutex );
+        try
+        {
+            m_mutex = new mutex();
+            ret = true;
+        } catch (...)
+        {
+            m_mutex = nullptr;
+            ret = false;
+        }
+
+        return ret;
+    }
+
+    void destroy_mutex()
+    {
+        QLOG_ASSERT( nullptr != m_mutex );
+        delete m_mutex;
+        m_mutex = nullptr;
     }
 #   endif
 
@@ -787,7 +816,7 @@ private:
     static decorater<level, false> m_prepend;
     static decorater<level, true> m_append;
 #   ifdef QLOG_MULTITHREAD
-    static mutex m_mutex;
+    static mutex * m_mutex;
 #   endif
 
 private:
@@ -815,7 +844,7 @@ private:
 
 #ifdef QLOG_MULTITHREAD
 template< unsigned level >
-mutex logger<level>::m_mutex;
+mutex * logger<level>::m_mutex = 0;
 #endif
 
 template< unsigned level >
@@ -979,62 +1008,89 @@ void set_output( std::ostream & _new_output )
 static inline
 void destroy()
 {
-    if( settings::initialized )
-    {
+    QLOG_ASSERT( settings::initialized );
 
-#		ifdef WIN32
-        settings::console_handle = 0;
-        settings::set_text_attribute = 0;
-#		endif
+#	ifdef WIN32
+    settings::console_handle = 0;
+    settings::set_text_attribute = 0;
+#   endif
 
-        QLOG_NAME_LOGGER_DEBUG . reset_decoration();
-        QLOG_NAME_LOGGER_TRACE . reset_decoration();
-        QLOG_NAME_LOGGER_INFO . reset_decoration();
-        QLOG_NAME_LOGGER_WARNING . reset_decoration();
-        QLOG_NAME_LOGGER_ERROR . reset_decoration();
+    QLOG_NAME_LOGGER_DEBUG . reset_decoration();
+    QLOG_NAME_LOGGER_TRACE . reset_decoration();
+    QLOG_NAME_LOGGER_INFO . reset_decoration();
+    QLOG_NAME_LOGGER_WARNING . reset_decoration();
+    QLOG_NAME_LOGGER_ERROR . reset_decoration();
 
-        QLOG_NAME_LOGGER_DEBUG . disable();
-        QLOG_NAME_LOGGER_TRACE . disable();
-        QLOG_NAME_LOGGER_INFO . disable();
-        QLOG_NAME_LOGGER_WARNING . disable();
-        QLOG_NAME_LOGGER_ERROR . disable();
+    QLOG_NAME_LOGGER_DEBUG . disable();
+    QLOG_NAME_LOGGER_TRACE . disable();
+    QLOG_NAME_LOGGER_INFO . disable();
+    QLOG_NAME_LOGGER_WARNING . disable();
+    QLOG_NAME_LOGGER_ERROR . disable();
 
-		// resetting decorations
-		QLOG_NAME_LOGGER_DEBUG . prepend().reset();
-		QLOG_NAME_LOGGER_DEBUG . append().reset();
-		QLOG_NAME_LOGGER_TRACE . prepend().reset();
-		QLOG_NAME_LOGGER_TRACE . append().reset();
-		QLOG_NAME_LOGGER_INFO . prepend().reset();
-		QLOG_NAME_LOGGER_INFO . append().reset();
-		QLOG_NAME_LOGGER_ERROR . prepend().reset();
-		QLOG_NAME_LOGGER_ERROR . append().reset();
-		QLOG_NAME_LOGGER_WARNING . prepend().reset();
-		QLOG_NAME_LOGGER_WARNING . append().reset();
+    // resetting decorations
+    QLOG_NAME_LOGGER_DEBUG . prepend().reset();
+    QLOG_NAME_LOGGER_DEBUG . append().reset();
+    QLOG_NAME_LOGGER_TRACE . prepend().reset();
+    QLOG_NAME_LOGGER_TRACE . append().reset();
+    QLOG_NAME_LOGGER_INFO . prepend().reset();
+    QLOG_NAME_LOGGER_INFO . append().reset();
+    QLOG_NAME_LOGGER_ERROR . prepend().reset();
+    QLOG_NAME_LOGGER_ERROR . append().reset();
+    QLOG_NAME_LOGGER_WARNING . prepend().reset();
+    QLOG_NAME_LOGGER_WARNING . append().reset();
 
-        settings::initialized = false;
-    }
+#   ifdef QLOG_MULTITHREAD
+    QLOG_NAME_LOGGER_DEBUG . destroy_mutex();
+    QLOG_NAME_LOGGER_TRACE . destroy_mutex();
+    QLOG_NAME_LOGGER_INFO . destroy_mutex();
+    QLOG_NAME_LOGGER_WARNING . destroy_mutex();
+    QLOG_NAME_LOGGER_ERROR . destroy_mutex();
+#   endif
+
+    settings::initialized = false;
 }
 // -------------------------------------------------------------------------- //
-/**@brief Initializes the library
- * @note This is only useful on Windows */
+/**@brief Initializes the library.
+ * @return true If the library in correctly initialized. If false is returned, then you should call
+ *         destroy and not use the library.
+ * @warning This should be called only once. */
 static inline
-void init()
+bool init()
 {
-    if( !settings::initialized )
-    {
-#		ifdef WIN32
-        settings::console_handle = GetStdHandle( STD_OUTPUT_HANDLE );
-        settings::set_text_attribute = static_cast<console_function>( get_console_function( "SetConsoleTextAttribute" ) );
-#		endif
+    QLOG_ASSERT( !settings::initialized );
 
-        QLOG_NAME_LOGGER_DEBUG . enable();
-        QLOG_NAME_LOGGER_TRACE . enable();
-        QLOG_NAME_LOGGER_INFO . enable();
-        QLOG_NAME_LOGGER_WARNING . enable();
-        QLOG_NAME_LOGGER_ERROR . enable();
+#   ifdef WIN32
+    settings::console_handle = GetStdHandle( STD_OUTPUT_HANDLE );
+    settings::set_text_attribute = static_cast<console_function>( get_console_function( "SetConsoleTextAttribute" ) );
+#   endif
 
-        settings::initialized = true;
-    }
+    QLOG_NAME_LOGGER_DEBUG . enable();
+    QLOG_NAME_LOGGER_TRACE . enable();
+    QLOG_NAME_LOGGER_INFO . enable();
+    QLOG_NAME_LOGGER_WARNING . enable();
+    QLOG_NAME_LOGGER_ERROR . enable();
+
+    bool init = true;
+
+#   ifdef QLOG_MULTITHREAD
+    init = QLOG_NAME_LOGGER_DEBUG . init_mutex();
+
+    if ( init )
+        init = QLOG_NAME_LOGGER_TRACE . init_mutex();
+
+    if ( init )
+        init = QLOG_NAME_LOGGER_INFO . init_mutex();
+
+    if ( init )
+        init = QLOG_NAME_LOGGER_WARNING . init_mutex();
+
+    if ( init )
+        init = QLOG_NAME_LOGGER_ERROR . init_mutex();
+#   endif
+
+    settings::initialized = init;
+
+    return settings::initialized;
 }
 
 static const unsigned black = 1;
