@@ -848,7 +848,7 @@ mutex * logger<level>::m_mutex = 0;
 #endif
 
 template< unsigned level >
-std::ostream * logger<level>::m_output;
+std::ostream * logger<level>::m_output = 0;
 
 template< unsigned level >
 decorater<level, true> logger<level>::m_append;
