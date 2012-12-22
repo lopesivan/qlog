@@ -812,14 +812,14 @@ struct logger
     bool init_mutex()
     {
         bool ret = false;
-        QLOG_ASSERT( nullptr == m_mutex );
+        QLOG_ASSERT( 0 == m_mutex );
         try
         {
             m_mutex = new mutex();
             ret = true;
         } catch (...)
         {
-            m_mutex = nullptr;
+            m_mutex = 0;
             ret = false;
         }
 
@@ -828,9 +828,9 @@ struct logger
 
     void destroy_mutex()
     {
-        QLOG_ASSERT( nullptr != m_mutex );
+        QLOG_ASSERT( 0 != m_mutex );
         delete m_mutex;
-        m_mutex = nullptr;
+        m_mutex = 0;
     }
 #   endif
 
