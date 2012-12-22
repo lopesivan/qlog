@@ -1,3 +1,9 @@
+v3.3
+	- Fixed a major bug causing prepend() and append() to work on
+	  only certain files of the project.
+	- Now multithread safe when QLOG_MULTITHREAD is set. See doc.
+	- Replaced \e with \003 to satisfy non-GNU terminals
+
 v3.2
 	- The library no longer relies on a compiler optimization to work
 	- More defense when compiled with QLOG_USE_ASSERTS
