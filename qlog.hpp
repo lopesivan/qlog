@@ -1322,26 +1322,26 @@ receiver<level> operator <<( const receiver<level> & _recv, const color & _color
 template<unsigned level> inline
 receiver<level> operator <<( const logger<level> & _logger, const underline & )
 {
-    return _logger << "\e[4m";
+    return _logger << "\033[4m";
 }
 
 template<unsigned level> inline
 receiver<level> operator <<( const receiver<level> & _recv, const underline & )
 {
-    return _recv << "\e[4m";
+    return _recv << "\033[4m";
 }
 
 // -------------------------------------------------------------------------- //
 template<unsigned level> inline
 receiver<level> operator <<( const logger<level> & _logger, const blink & )
 {
-    return _logger << "\e[5m";
+    return _logger << "\033[5m";
 }
 
 template<unsigned level> inline
 receiver<level> operator <<( const receiver<level> & _recv, const blink & )
 {
-    return _recv << "\e[5m";
+    return _recv << "\033[5m";
 }
 
 #else // WIN32
@@ -1513,7 +1513,7 @@ struct blink_decoration : public decoration
     {
 
 #       ifndef WIN32
-        _ostr << "\e[5m";
+        _ostr << "\033[5m";
 #       else
         ( void )_ostr;
 #       endif
@@ -1545,7 +1545,7 @@ struct underline_decoration : public decoration
     {
 
 #       ifndef WIN32
-        _ostr << "\e[4m";;
+        _ostr << "\033[4m";;
 #       else
         ( void )_ostr;
 #       endif
