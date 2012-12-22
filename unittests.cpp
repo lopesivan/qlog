@@ -1,7 +1,7 @@
 #define QLOG_USE_ASSERTS
 #ifdef TEST_MULTITHREADING
 #   ifndef WIN32
-#       define QLOG_MULTITHREAD_PTHREAD
+#       define QLOG_MULTITHREAD_CPP11
 #   else
 #		define QLOG_MULTITHREAD_WIN32
 #	endif

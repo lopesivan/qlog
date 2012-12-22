@@ -286,6 +286,13 @@
 #   endif
 #endif
 
+#ifdef QLOG_MULTITHREAD_CPP11
+#   include <mutex>
+#   ifndef QLOG_MULTITHREAD
+#       define QLOG_MULTITHREAD
+#   endif
+#endif
+
 // windows color support
 #ifdef WIN32
 #	include <windows.h>
@@ -385,6 +392,8 @@ struct mutex
 private:
 	CRITICAL_SECTION m_section;
 };
+#elif defined QLOG_MULTITHREAD_CPP11
+using std::mutex;
 #endif
 
 // -------------------------------------------------------------------------- //
